@@ -1,4 +1,4 @@
-const appVersion = '1.1.3';
+const appVersion = '1.1.4';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -785,4 +785,5 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
