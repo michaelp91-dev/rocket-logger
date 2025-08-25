@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
 
 body { 
-    font-family: 'Inter', sans-serif;
+    font-family: 'Roboto Mono', monospace;
 }
 .modal { 
     display: none; 
@@ -46,14 +46,12 @@ body {
     background-color: #374151;
 }
 .item-list-button.selected { 
-    background-color: #1d4ed8;
+    background-color: #2563eb; /* Updated to blue */
 }
 .modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar { 
     width: 8px;
 }
 .modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb { 
-    background-color: #4f46e5; 
+    background-color: #2563eb; /* Updated to blue */
     border-radius: 10px;
 }
-
-
