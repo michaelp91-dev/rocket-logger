@@ -21,7 +21,7 @@
             }
         }
     </script>
-     <script>
+    <script>
       MathJax = {
         tex: {
           inlineMath: [['$', '$'], ['\\(', '\\)']]
@@ -29,13 +29,16 @@
       };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-2 sm:p-4">
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-2">
 
     <div class="w-full max-w-4xl mx-auto bg-gray-800 rounded-2xl shadow-2xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">Rocket Flight Center</h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-400">Rocket Flight Center</h1>
             <p class="text-gray-400 mt-2">Manage your fleet, log flights, and analyze performance.</p>
         </header>
 
@@ -55,7 +58,7 @@
     <div id="manageModal" class="modal">
         <div class="modal-content bg-gray-800 rounded-lg shadow-xl">
             <div class="p-6 border-b border-gray-700">
-                 <h2 id="modalTitle" class="text-2xl font-bold text-cyan-400">Manage</h2>
+                 <h2 id="modalTitle" class="text-2xl font-bold text-blue-400">Manage</h2>
             </div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -67,7 +70,7 @@
                     <div class="md:col-span-2 space-y-4">
                         <div id="formContainer" class="space-y-4"></div>
                         <div id="dataDisplay" class="bg-gray-900/50 p-4 rounded-lg hidden">
-                            <h4 class="font-semibold text-cyan-400 mb-2">Complete Data</h4>
+                            <h4 class="font-semibold text-blue-400 mb-2">Complete Data</h4>
                             <div id="dataContent" class="space-y-2 text-sm"></div>
                         </div>
                     </div>
@@ -76,14 +79,14 @@
              <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-700">
                 <button id="deleteItemBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Delete</button>
                 <button class="close-modal-btn bg-gray-600 hover:bg-gray-500 font-bold py-2 px-4 rounded-lg">Close</button>
-                <button id="saveItemBtn" class="bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-bold py-2 px-4 rounded-lg">Save</button>
+                <button id="saveItemBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save</button>
             </div>
         </div>
     </div>
 
     <div id="preFlightModal" class="modal">
         <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Start a New Pre-Flight Check</h2>
+            <h2 class="text-2xl font-bold text-blue-400 mb-6">Start a New Pre-Flight Check</h2>
             <div class="space-y-4">
                 <div>
                     <label for="preFlightRocketSelect" class="block mb-1 text-sm font-medium text-gray-400">Select Rocket</label>
@@ -100,7 +103,7 @@
             </div>
             <div class="flex justify-end gap-4 mt-8 border-t border-gray-700 pt-4">
                 <button class="close-modal-btn bg-gray-600 hover:bg-gray-500 font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="savePreFlightBtn" class="bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-bold py-2 px-4 rounded-lg">Save Pre-Flight & Estimate</button>
+                <button id="savePreFlightBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save Pre-Flight & Estimate</button>
             </div>
         </div>
     </div>
@@ -108,7 +111,7 @@
     <div id="flightLogModal" class="modal">
         <div class="modal-content bg-gray-800 rounded-lg shadow-xl">
             <div class="p-6 border-b border-gray-700">
-                <h2 class="text-2xl font-bold text-cyan-400">Flight Log</h2>
+                <h2 class="text-2xl font-bold text-blue-400">Flight Log</h2>
             </div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -131,5 +134,4 @@
 
     <script src="script.js"></script>
 </body>
-
 </html>
