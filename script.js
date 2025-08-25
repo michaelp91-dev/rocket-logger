@@ -1,4 +1,4 @@
-const appVersion = '1.1.5';
+const appVersion = '1.2.0';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -29,22 +29,13 @@ class Rocket {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     }
     calculate_cop() {
-        // Use the correct center of pressure factor based on nose cone type
         const XN = this.nose_cone_type === 'cone' ? 0.666 : 0.466;
         const CN_N = 2.0;
-        
-        // Corrected typos from your example (this.radius and this.fin_semi_span)
         const CN_F = (1 + this.radius / (this.fin_semi_span + this.radius)) * (4 * this.num_fins * Math.pow(this.fin_semi_span / this.diameter, 2) / (1 + Math.sqrt(1 + Math.pow(2 * this.fin_mid_chord_length / (this.fin_root_chord + this.fin_tip_chord), 2))));
-
         const XF = this.nose_to_fin_dist + (this.fin_sweep_dist / 3) * (this.fin_root_chord + 2 * this.fin_tip_chord) / (this.fin_root_chord + this.fin_tip_chord) + (1 / 6) * (this.fin_root_chord + this.fin_tip_chord - this.fin_root_chord * this.fin_tip_chord / (this.fin_root_chord + this.fin_tip_chord));
-        
         const CN_R = CN_N + CN_F;
-
-        // Note: The nose cone position is the factor (XN) times the nose cone length.
-        // Your example was missing this multiplication.
         const nose_position = XN * this.nose_cone_length;
         const CoP = (CN_N * nose_position + CN_F * XF) / CN_R;
-
         return CoP;
     }
 }
@@ -72,6 +63,31 @@ function saveAllData() {
     localStorage.setItem('engineList', JSON.stringify(engineList));
     localStorage.setItem('flightLog', JSON.stringify(flightLog));
 }
+
+// --- THEME MANAGEMENT ---
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const sunIcon = document.getElementById('sun-icon');
+const moonIcon = document.getElementById('moon-icon');
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+    }
+}
+
+themeToggleBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    const newTheme = isDark ? 'dark' : 'light';
+    localStorage.setItem('theme', newTheme);
+    applyTheme(newTheme);
+});
+
 
 // --- MODAL & UI MANAGEMENT ---
 const manageModal = document.getElementById('manageModal');
@@ -133,7 +149,7 @@ document.getElementById('savePreFlightBtn').addEventListener('click', () => {
 
 function openFlightLogModal() {
     populateFlightList();
-    document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-400 p-8">Select a flight to view details.</div>';
+    document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div>';
     flightLogModal.style.display = 'block';
 }
 
@@ -141,13 +157,13 @@ function populateFlightList() {
     const listEl = document.getElementById('flightList');
     listEl.innerHTML = '';
     flightLog.forEach(flight => {
-        const statusColor = flight.status === 'Success' ? 'text-green-400' : flight.status === 'Failure' ? 'text-red-400' : 'text-yellow-400';
+        const statusColor = flight.status === 'Success' ? 'text-green-500' : flight.status === 'Failure' ? 'text-red-500' : 'text-yellow-500';
         const button = document.createElement('button');
         button.className = 'item-list-button w-full text-left';
         button.dataset.id = flight.id;
         button.innerHTML = `
             <div class="font-bold">${flight.rocketName} / ${flight.engineName}</div>
-            <div class="text-xs text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div>
             <div class="text-sm font-semibold ${statusColor}">${flight.status}</div>
         `;
         button.onclick = () => viewFlightDetails(flight.id);
@@ -160,7 +176,6 @@ function viewFlightDetails(flightId) {
     const container = document.getElementById('flightDetailsContainer');
     document.querySelectorAll('#flightList .item-list-button').forEach(btn => btn.classList.toggle('selected', btn.dataset.id === flightId));
     
-    // Show/hide edit and delete buttons
     const editBtn = document.getElementById('editFlightBtn');
     const deleteBtn = document.getElementById('deleteFlightBtn');
     if (flight.status === 'Pending') {
@@ -172,38 +187,37 @@ function viewFlightDetails(flightId) {
     deleteBtn.classList.remove('hidden');
     deleteBtn.onclick = () => deleteFlightLog(flightId);
     
-    // Get full rocket and engine data for detailed display
     const rocketData = rocketList.find(r => r.id === flight.rocketId);
     const engineData = engineList.find(e => e.id === flight.engineId);
     
     container.innerHTML = `
         <h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3>
-        <p class="text-sm text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>
         
         ${flight.status === 'Pending' ? generateRocketEngineDataDisplay(rocketData, engineData) : ''}
         
-        <div class="space-y-4 bg-gray-900/50 p-4 rounded-lg">
+        <div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
             <div>
-                <h4 class="font-semibold text-cyan-400 mb-2">Pre-Flight Estimates</h4>
+                <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <h5 class="font-semibold text-cyan-300 mb-2">Flight Performance</h5>
+                        <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Flight Performance</h5>
                         <p>Est. Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(2) : 'N/A'} m</strong></p>
                         <p>Est. Max Velocity: <strong>${flight.estimates.v ? flight.estimates.v.toFixed(2) : 'N/A'} m/s</strong></p>
                         <p>Launch Rod Length: <strong>${flight.launchRodLength || 1.0} m</strong></p>
-                        <p>Launch Rod Velocity: <strong class="${flight.estimates.launch_rod_velocity && flight.estimates.launch_rod_velocity >= 10 ? 'text-green-400' : 'text-red-400'}">${flight.estimates.launch_rod_velocity ? flight.estimates.launch_rod_velocity.toFixed(2) : 'N/A'} m/s</strong></p>
+                        <p>Launch Rod Velocity: <strong class="${flight.estimates.launch_rod_velocity && flight.estimates.launch_rod_velocity >= 10 ? 'text-green-500' : 'text-red-500'}">${flight.estimates.launch_rod_velocity ? flight.estimates.launch_rod_velocity.toFixed(2) : 'N/A'} m/s</strong></p>
                     </div>
                     <div>
-                        <h5 class="font-semibold text-cyan-300 mb-2">Stability & Mass</h5>
-                        <p>Stability: <strong class="${flight.estimates.stability_calibers && flight.estimates.stability_calibers >= 1.0 ? 'text-green-400' : 'text-red-400'}">${flight.estimates.stability_calibers ? flight.estimates.stability_calibers.toFixed(2) : 'N/A'} cal</strong></p>
+                        <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Stability & Mass</h5>
+                        <p>Stability: <strong class="${flight.estimates.stability_calibers && flight.estimates.stability_calibers >= 1.0 ? 'text-green-500' : 'text-red-500'}">${flight.estimates.stability_calibers ? flight.estimates.stability_calibers.toFixed(2) : 'N/A'} cal</strong></p>
                         <p>Loaded Mass: <strong>${flight.estimates.loaded_mass ? (flight.estimates.loaded_mass * 1000).toFixed(1) : 'N/A'} g</strong></p>
                         <p>T/W Ratio: <strong>${flight.estimates.thrust_to_weight_ratio ? flight.estimates.thrust_to_weight_ratio.toFixed(2) : 'N/A'}</strong></p>
                         <p>Min Thrust Needed: <strong>${flight.estimates.min_thrust_needed ? flight.estimates.min_thrust_needed.toFixed(2) : 'N/A'} N</strong></p>
                     </div>
                 </div>
                 <div class="mt-4">
-                    <button id="showDetailsBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm w-full">Show Calculation Details</button>
-                    <div id="equationsContainer" class="hidden mt-4 p-4 bg-gray-900 rounded-lg text-xs space-y-4"></div>
+                    <button id="showDetailsBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm w-full">Show Calculation Details</button>
+                    <div id="equationsContainer" class="hidden mt-4 p-4 bg-gray-200 dark:bg-gray-900 rounded-lg text-xs space-y-4"></div>
                 </div>
             </div>
             ${flight.status === 'Pending' ? generatePostFlightForm(flight.id) : generatePostFlightReport(flight)}
@@ -213,14 +227,12 @@ function viewFlightDetails(flightId) {
          setTimeout(() => renderCharts(flightId), 100);
     }
     
-    // Add event listener for the new button
     document.getElementById('showDetailsBtn').addEventListener('click', (e) => {
         const btn = e.target;
         const container = document.getElementById('equationsContainer');
         const isHidden = container.classList.contains('hidden');
         if (isHidden) {
             container.innerHTML = generateEquationsDisplay(flight);
-            // THIS IS THE NEW LINE: Tell MathJax to render the new content
             MathJax.typesetPromise([container]); 
             container.classList.remove('hidden');
             btn.textContent = 'Hide Calculation Details';
@@ -237,26 +249,24 @@ function generateEquationsDisplay(flight) {
     const engineData = engineList.find(e => e.id === flight.engineId);
     if (!rocketData || !engineData) return '<p>Rocket or engine data not found.</p>';
     
-    // Instantiate classes to perform calculations step-by-step
     const rocket = new Rocket(rocketData);
     const motor = new Motor(engineData);
     const g = 9.80665, rho = 1.2, Cd = 0.75;
     const launchRodLength = flight.launchRodLength;
 
-    // --- Center of Pressure (COP) Calculation (New Format) ---
-    const XN_factor = rocket.nose_cone_type === 'cone' ? 0.666 : 0.466;
+    const nose_cp_factor = rocket.nose_cone_type === 'cone' ? 0.666 : 0.466;
     const nose_cone_type_label = rocket.nose_cone_type.charAt(0).toUpperCase() + rocket.nose_cone_type.slice(1);
-    const CN_N = 2.0;
-    const XN_pos = XN_factor * rocket.nose_cone_length;
-    const CN_F = (1 + rocket.radius / (rocket.fin_semi_span + rocket.radius)) * (4 * rocket.num_fins * Math.pow(rocket.fin_semi_span / rocket.diameter, 2) / (1 + Math.sqrt(1 + Math.pow(2 * rocket.fin_mid_chord_length / (rocket.fin_root_chord + rocket.fin_tip_chord), 2))));
-    const XF = rocket.nose_to_fin_dist + (rocket.fin_sweep_dist / 3) * (rocket.fin_root_chord + 2 * rocket.fin_tip_chord) / (rocket.fin_root_chord + rocket.fin_tip_chord) + (1 / 6) * (rocket.fin_root_chord + rocket.fin_tip_chord - rocket.fin_root_chord * rocket.fin_tip_chord / (rocket.fin_root_chord + rocket.fin_tip_chord));
-    const CN_R = CN_N + CN_F;
-    const CoP = (CN_N * XN_pos + CN_F * XF) / CN_R;
+    const cn_nose = 2.0;
+    const cp_nose_m = nose_cp_factor * rocket.nose_cone_length;
+    const interference = 1 + (rocket.radius / (rocket.fin_semi_span + rocket.radius));
+    const cn_fins = interference * ((4 * rocket.num_fins * Math.pow(rocket.fin_semi_span / rocket.diameter, 2)) / (1 + Math.sqrt(1 + Math.pow(2 * rocket.fin_mid_chord_length / (rocket.fin_root_chord + rocket.fin_tip_chord), 2))));
+    const term1 = (rocket.fin_sweep_dist / 3.0) * (rocket.fin_root_chord + 2 * rocket.fin_tip_chord) / (rocket.fin_root_chord + rocket.fin_tip_chord);
+    const term2 = (1.0 / 6.0) * (rocket.fin_root_chord + rocket.fin_tip_chord - (rocket.fin_root_chord * rocket.fin_tip_chord) / (rocket.fin_root_chord + rocket.fin_tip_chord));
+    const cp_fins_m = rocket.nose_to_fin_dist + term1 + term2;
+    const cop_m = ((cn_nose * cp_nose_m) + (cn_fins * cp_fins_m)) / (cn_nose + cn_fins);
 
-    // --- Performance Calculation ---
     const loaded_mass = rocket.dry_mass + motor.initial_mass;
-    const T = motor.avg_thrust;
-    const M = loaded_mass;
+    const T = motor.avg_thrust, M = loaded_mass;
     const area = Math.PI * Math.pow(rocket.radius, 2);
     const k = 0.5 * rho * Cd * area;
     const t_burn = motor.burn_time;
@@ -269,7 +279,6 @@ function generateEquationsDisplay(flight) {
     const yc = (M / (2 * k)) * Math.log(yc_num / (M * g));
     const total_altitude = yb + yc;
     
-    // --- Other Calcs ---
     const thrust_to_weight_ratio = T / (M * g);
     const min_thrust_needed = M * ((Math.pow(10, 2) / (2 * launchRodLength)) + g);
     const launch_rod_velocity = Math.sqrt(2 * ((motor.peak_thrust - M * g) / M) * launchRodLength);
@@ -277,38 +286,34 @@ function generateEquationsDisplay(flight) {
     return `
         <div class="space-y-4">
             <div>
-                <h5 class="font-semibold text-cyan-300 mb-2">Center of Pressure (COP)</h5>
-                <p class="mb-2">Formula: $CoP = \\frac{(C_{N,N} \\cdot X_N) + (C_{N,F} \\cdot X_F)}{C_{N,R}}$</p>
+                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Center of Pressure (COP)</h5>
+                <p class="mb-2">Formula: $COP = \\frac{(C_{N,nose} \\cdot CP_{nose}) + (C_{N,fins} \\cdot CP_{fins})}{C_{N,nose} + C_{N,fins}}$</p>
                 <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li>Nose Cone Force $C_{N,N}$: <strong>${CN_N.toFixed(2)}</strong></li>
-                    <li>Nose Cone Position $X_N$ (${nose_cone_type_label}): $${XN_factor} \\cdot L_{nose}$ = <strong>${(XN_pos * 100).toFixed(2)} cm</strong></li>
-                    <li>Fin Force $C_{N,F}$: <strong>${CN_F.toFixed(3)}</strong></li>
-                    <li>Fin Position $X_F$: <strong>${(XF * 100).toFixed(2)} cm</strong></li>
-                    <li>Total Force $C_{N,R}$: $C_{N,N} + C_{N,F}$ = <strong>${CN_R.toFixed(3)}</strong></li>
-                    <li><strong>Final COP</strong>: <strong>${(CoP * 100).toFixed(2)} cm</strong> (from nose tip)</li>
+                    <li>Nose Cone $C_{N,nose}$: <strong>${cn_nose.toFixed(2)}</strong> (constant)</li>
+                    <li>Nose Cone $CP_{nose}$ (${nose_cone_type_label}): $${nose_cp_factor} \\cdot L_{nose}$ = <strong>${(cp_nose_m*100).toFixed(2)} cm</strong></li>
+                    <li>Fin Interference Factor: <strong>${interference.toFixed(3)}</strong></li>
+                    <li>Fins $C_{N,fins}$: <strong>${cn_fins.toFixed(3)}</strong></li>
+                    <li>Fins $CP_{fins}$: <strong>${(cp_fins_m*100).toFixed(2)} cm</strong> (from nose tip)</li>
+                    <li><strong>Final COP</strong>: <strong>${(cop_m*100).toFixed(2)} cm</strong> (from nose tip)</li>
                 </ul>
             </div>
-            
             <div>
-                <h5 class="font-semibold text-cyan-300 mb-2">Estimated Altitude & Velocity</h5>
-                <p class="mb-2">Based on the 1D motion equation with drag.</p>
+                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Estimated Altitude & Velocity</h5>
                 <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li>Air Density ($\\rho$): <strong>${rho} \\text{ kg/m}^3$</strong>, Drag Coeff. ($C_d$): <strong>${Cd}</strong></li>
-                    <li>Cross-sectional Area (A): $\\pi r^2$ = <strong>${area.toFixed(5)} m^2</strong></li>
-                    <li>Drag Parameter (k): $0.5 \\rho C_d A$ = <strong>${k.toFixed(4)}</strong></li>
-                    <li>Max Velocity (v): <strong>${v.toFixed(2)} m/s</strong></li>
+                    <li>Air Density ($\\rho$): <strong>${rho} kg/m^3</strong>, Drag Coeff. ($C_d$): <strong>${Cd}</strong></li>
+                    <li>Cross-sectional Area (A): <strong>${area.toFixed(5)} m^2</strong></li>
+                    <li><strong>Est. Max Velocity (v)</strong>: <strong>${v.toFixed(2)} m/s</strong></li>
                     <li>Burnout Altitude ($y_b$): <strong>${yb.toFixed(2)} m</strong></li>
                     <li>Coasting Altitude ($y_c$): <strong>${yc.toFixed(2)} m</strong></li>
                     <li><strong>Est. Total Altitude ($y_b + y_c$)</strong>: <strong>${total_altitude.toFixed(2)} m</strong></li>
                 </ul>
             </div>
-
             <div>
-                <h5 class="font-semibold text-cyan-300 mb-2">Launch Stability & Thrust</h5>
+                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Launch Stability & Thrust</h5>
                 <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li><strong>Thrust-to-Weight Ratio</strong>: $\\frac{T}{Mg}$ = $\\frac{${T.toFixed(2)}}{${M.toFixed(3)} \\cdot ${g.toFixed(2)}}$ = <strong>${thrust_to_weight_ratio.toFixed(2)}</strong></li>
-                    <li><strong>Min Thrust Needed</strong>: $M(\\frac{v_{safe}^2}{2L} + g)$ = <strong>${min_thrust_needed.toFixed(2)} N</strong></li>
-                    <li><strong>Launch Rod Velocity</strong>: $\\sqrt{2(\\frac{T_{peak}-Mg}{M})L}$ = <strong>${launch_rod_velocity.toFixed(2)} m/s</strong></li>
+                    <li><strong>Thrust-to-Weight Ratio</strong>: <strong>${thrust_to_weight_ratio.toFixed(2)}</strong></li>
+                    <li><strong>Min Thrust Needed</strong>: <strong>${min_thrust_needed.toFixed(2)} N</strong></li>
+                    <li><strong>Launch Rod Velocity</strong>: <strong>${launch_rod_velocity.toFixed(2)} m/s</strong></li>
                 </ul>
             </div>
         </div>
@@ -323,8 +328,8 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
     
     return `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <div class="bg-gray-900/50 p-4 rounded-lg">
-                <h4 class="font-semibold text-cyan-400 mb-3">Rocket Data</h4>
+            <div class="bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
+                <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-3">Rocket Data</h4>
                 <div class="grid grid-cols-2 gap-2 text-sm">
                     <div><strong>Name:</strong> ${rocketData.rocket_name}</div>
                     <div><strong>Dry Mass:</strong> ${rocketData.dry_mass_g}g</div>
@@ -340,17 +345,16 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                     <div><strong>Sweep:</strong> ${rocketData.fin_sweep_dist_cm}cm</div>
                     <div><strong>Nose to Fin:</strong> ${rocketData.nose_to_fin_dist_cm}cm</div>
                 </div>
-                <div class="mt-3 pt-3 border-t border-gray-600">
-                    <h5 class="font-semibold text-cyan-300 mb-2">Calculated Values</h5>
+                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Calculated Values</h5>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><strong>COP:</strong> ${(rocket.calculate_cop() * 100).toFixed(2)}cm</div>
                         <div><strong>Mid Chord:</strong> ${(rocket.fin_mid_chord_length * 100).toFixed(2)}cm</div>
                     </div>
                 </div>
             </div>
-            
-            <div class="bg-gray-900/50 p-4 rounded-lg">
-                <h4 class="font-semibold text-cyan-400 mb-3">Engine Data</h4>
+            <div class="bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
+                <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-3">Engine Data</h4>
                 <div class="grid grid-cols-2 gap-2 text-sm">
                     <div><strong>Name:</strong> ${engineData.motor_name}</div>
                     <div><strong>Initial Mass:</strong> ${engineData.motor_initial_mass_g}g</div>
@@ -368,25 +372,25 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
 function generatePostFlightForm(flightId) {
     return `
         <div>
-            <h4 class="font-semibold text-cyan-400 mb-2">Post-Flight Report</h4>
+            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4>
             <div class="space-y-3">
                 <div>
                     <label for="flightStatus" class="text-sm">Flight Outcome:</label>
-                    <select id="flightStatus" class="w-full bg-gray-700 rounded p-1 mt-1">
+                    <select id="flightStatus" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1 mt-1">
                         <option value="Success">Success</option>
                         <option value="Failure">Failure</option>
                     </select>
                 </div>
                 <div>
                     <label for="flightNotes" class="text-sm">Notes:</label>
-                    <textarea id="flightNotes" rows="3" class="w-full bg-gray-700 rounded p-1 mt-1" placeholder="e.g., Perfect flight, slight weathercocking."></textarea>
+                    <textarea id="flightNotes" rows="3" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1 mt-1" placeholder="e.g., Perfect flight, slight weathercocking."></textarea>
                 </div>
                 <button onclick="saveFlightReport('${flightId}')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Save Report</button>
             </div>
         </div>
         <div>
-            <h4 class="font-semibold text-cyan-400 mb-2">Flight Computer Data</h4>
-            <textarea id="csvData" rows="6" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-xl" placeholder="Paste raw CSV data here..."></textarea>
+            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Flight Computer Data</h4>
+            <textarea id="csvData" rows="6" class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl" placeholder="Paste raw CSV data here..."></textarea>
             <button onclick="analyzeFlightData('${flightId}')" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Analyze Flight Data</button>
         </div>
     `;
@@ -395,20 +399,20 @@ function generatePostFlightForm(flightId) {
 function generatePostFlightReport(flight) {
      return `
         <div>
-            <h4 class="font-semibold text-cyan-400 mb-2">Post-Flight Report</h4>
-            <p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-400' : 'text-red-400'}">${flight.status}</strong></p>
-            <p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\n/g, '<br>') || 'No notes.'}</p>
+            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4>
+            <p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-500' : 'text-red-500'}">${flight.status}</strong></p>
+            <p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\\n/g, '<br>') || 'No notes.'}</p>
         </div>
         ${flight.actuals ? `
         <div>
-            <h4 class="font-semibold text-cyan-400 mb-2">Actual Performance</h4>
+            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Actual Performance</h4>
             <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max Altitude</h5><p class="font-bold">${flight.actuals.maxAltitude.toFixed(2)} m</p></div>
-                <div class="bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div>
-                <div class="bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(2)} m/s</p></div>
+                <div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max Altitude</h5><p class="font-bold">${flight.actuals.maxAltitude.toFixed(2)} m</p></div>
+                <div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div>
+                <div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(2)} m/s</p></div>
             </div>
-            <div class="mt-4 bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div>
-            <div class="mt-4 bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="accelChart"></canvas></div>
+            <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div>
+            <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="accelChart"></canvas></div>
         </div>
         ` : '<div><p>No flight computer data was analyzed.</p></div>'}
     `;
@@ -423,7 +427,6 @@ function saveFlightReport(flightId) {
     viewFlightDetails(flightId);
 }
 
-// --- FLIGHT DATA ANALYSIS ---
 function analyzeFlightData(flightId) {
     const flight = flightLog.find(f => f.id === flightId);
     const csvText = document.getElementById('csvData').value.trim();
@@ -485,13 +488,27 @@ function renderCharts(flightId) {
          const azG = parseFloat(values[5]) / 256.0;
          processedData.push({ timeS, altitudeM, axG, ayG, azG });
     });
+    
     const labels = processedData.map(d => d.timeS.toFixed(3));
-    const gridColor = 'rgba(255, 255, 255, 0.1)', fontColor = '#e5e7eb';
-    const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: fontColor } } }, scales: { x: { ticks: { color: fontColor }, grid: { color: gridColor } }, y: { ticks: { color: fontColor }, grid: { color: gridColor } } } };
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const fontColor = isDarkMode ? '#e5e7eb' : '#1f2937';
+
+    const chartOptions = { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        plugins: { legend: { labels: { color: fontColor } } }, 
+        scales: { 
+            x: { ticks: { color: fontColor }, grid: { color: gridColor } }, 
+            y: { ticks: { color: fontColor }, grid: { color: gridColor } } 
+        } 
+    };
+    
     const altCtx = document.getElementById('altitudeChart')?.getContext('2d');
-    if(altCtx) new Chart(altCtx, { type: 'line', data: { labels, datasets: [{ label: 'Altitude (m)', data: processedData.map(d => d.altitudeM), borderColor: '#6366f1', borderWidth: 2, pointRadius: 0 }] }, options: chartOptions });
+    if(altCtx) new Chart(altCtx, { type: 'line', data: { labels, datasets: [{ label: 'Altitude (m)', data: processedData.map(d => d.altitudeM), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0 }] }, options: chartOptions });
+    
     const accelCtx = document.getElementById('accelChart')?.getContext('2d');
-    if(accelCtx) new Chart(accelCtx, { type: 'line', data: { labels, datasets: [ { label: 'Accel X (G)', data: processedData.map(d => d.axG), borderColor: '#ec4899', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Y (G)', data: processedData.map(d => d.ayG), borderColor: '#22c55e', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Z (G)', data: processedData.map(d => d.azG), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0 } ] }, options: chartOptions });
+    if(accelCtx) new Chart(accelCtx, { type: 'line', data: { labels, datasets: [ { label: 'Accel X (G)', data: processedData.map(d => d.axG), borderColor: '#ec4899', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Y (G)', data: processedData.map(d => d.ayG), borderColor: '#22c55e', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Z (G)', data: processedData.map(d => d.azG), borderColor: '#8b5cf6', borderWidth: 2, pointRadius: 0 } ] }, options: chartOptions });
 }
 
 // --- PERFORMANCE ESTIMATION ---
@@ -508,7 +525,6 @@ function calculatePerformance(rocketData, engineData, launchRodLength = 1.0) {
     const min_thrust_needed = M * ((Math.pow(10, 2) / (2 * launchRodLength)) + g);
     const launch_rod_velocity = Math.sqrt(2 * ((motor.peak_thrust - M * g) / M) * launchRodLength);
     
-    // Original altitude calculation
     const area = Math.PI * Math.pow(rocket.radius, 2);
     const k = 0.5 * rho * Cd * area;
     const t = motor.burn_time;
@@ -548,16 +564,24 @@ const rocketFormFields = [
     { id: 'fin_sweep_dist_cm', label: 'Sweep Distance (cm)', type: 'number' },
     { id: 'nose_to_fin_dist_cm', label: 'Nose Tip to Fin Root (cm)', type: 'number' }
 ];
-const engineFormFields = [{ id: 'motor_name', label: 'Engine Name', type: 'text' }, { id: 'motor_initial_mass_g', label: 'Initial Mass (g)', type: 'number' }, { id: 'motor_propellant_mass_g', label: 'Propellant Mass (g)', type: 'number' }, { id: 'motor_avg_thrust_n', label: 'Average Thrust (N)', type: 'number' }, { id: 'motor_peak_thrust_n', label: 'Peak Thrust (N)', type: 'number' }, { id: 'motor_peak_time_s', label: 'Time to Peak (s)', type: 'number' }, { id: 'motor_burn_time_s', label: 'Burn Time (s)', type: 'number' }];
+const engineFormFields = [
+    { id: 'motor_name', label: 'Engine Name', type: 'text' }, 
+    { id: 'motor_initial_mass_g', label: 'Initial Mass (g)', type: 'number' }, 
+    { id: 'motor_propellant_mass_g', label: 'Propellant Mass (g)', type: 'number' }, 
+    { id: 'motor_avg_thrust_n', label: 'Average Thrust (N)', type: 'number' }, 
+    { id: 'motor_peak_thrust_n', label: 'Peak Thrust (N)', type: 'number' }, 
+    { id: 'motor_peak_time_s', label: 'Time to Peak (s)', type: 'number' }, 
+    { id: 'motor_burn_time_s', label: 'Burn Time (s)', type: 'number' }
+];
 
 function generateFormHTML(fields) {
     return fields.map(f => {
         let inputHtml = '';
         if (f.type === 'select') {
             const optionsHtml = f.options.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
-            inputHtml = `<select id="${f.id}" class="bg-gray-700 rounded p-2 w-full">${optionsHtml}</select>`;
+            inputHtml = `<select id="${f.id}" class="bg-gray-200 dark:bg-gray-700 rounded p-2 w-full">${optionsHtml}</select>`;
         } else {
-            inputHtml = `<input id="${f.id}" type="${f.type}" placeholder="${f.placeholder || ''}" class="bg-gray-700 rounded p-2 w-full">`;
+            inputHtml = `<input id="${f.id}" type="${f.type}" placeholder="${f.placeholder || ''}" class="bg-gray-200 dark:bg-gray-700 rounded p-2 w-full">`;
         }
         return `<div class="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr] gap-1 sm:gap-2 items-center"><label for="${f.id}" class="text-left sm:text-right">${f.label}:</label>${inputHtml}</div>`;
     }).join('');
@@ -615,8 +639,8 @@ function displayItemData(itemData) {
                 <div><strong>Sweep Distance:</strong> ${itemData.fin_sweep_dist_cm}cm</div>
                 <div><strong>Nose to Fin Distance:</strong> ${itemData.nose_to_fin_dist_cm}cm</div>
             </div>
-            <div class="mt-4 pt-4 border-t border-gray-600">
-                <h5 class="font-semibold text-cyan-300 mb-2">Calculated Values</h5>
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Calculated Values</h5>
                 <div class="grid grid-cols-2 gap-4">
                     <div><strong>Center of Pressure:</strong> ${(rocket.calculate_cop() * 100).toFixed(2)}cm</div>
                     <div><strong>Mid Chord Length:</strong> ${(rocket.fin_mid_chord_length * 100).toFixed(2)}cm</div>
@@ -668,8 +692,11 @@ function saveItem() {
 }
 function deleteItem() {
     if (!editingItemId || !confirm('Are you sure?')) return;
-    if (currentModalType === 'rocket') rocketList = rocketList.filter(item => item.id !== editingItemId);
-    else engineList = engineList.filter(item => item.id !== editingItemId);
+    if (currentModalType === 'rocket') {
+        rocketList = rocketList.filter(item => item.id !== editingItemId);
+    } else {
+        engineList = engineList.filter(item => item.id !== editingItemId);
+    }
     saveAllData();
     populateModalList();
     clearForm();
@@ -712,7 +739,6 @@ function editPreFlight(flightId) {
     document.getElementById('preFlightEngineSelect').value = flight.engineId;
     document.getElementById('launchRodLength').value = flight.launchRodLength || 1.0;
     
-    // Change save button to update mode
     const saveBtn = document.getElementById('savePreFlightBtn');
     saveBtn.textContent = 'Update Pre-Flight';
     saveBtn.onclick = () => updatePreFlight(flightId);
@@ -745,7 +771,6 @@ function updatePreFlight(flightId) {
     
     saveAllData();
     
-    // Reset save button
     const saveBtn = document.getElementById('savePreFlightBtn');
     saveBtn.textContent = 'Save Pre-Flight & Estimate';
     saveBtn.onclick = document.getElementById('savePreFlightBtn').onclick;
@@ -770,21 +795,24 @@ function deleteFlightLog(flightId) {
 window.addEventListener('DOMContentLoaded', () => {
     loadAllData();
     
-    // Update footer
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        applyTheme(systemPrefersDark ? 'dark' : 'light');
+    }
+    
     const updateTime = new Date().toUTCString();
     const footer = document.getElementById('app-footer');
     if (footer) {
-        footer.innerHTML = `Version ${appVersion} | Updated on: ${updateTime}`;
+        footer.innerHTML = `Version ${appVersion} | ${updateTime}`;
     }
 
-    // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(registration => console.log('SW registered'))
             .catch(error => console.log('SW registration failed'));
     }
-
 });
-
-
 
