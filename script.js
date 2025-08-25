@@ -670,7 +670,7 @@ document.getElementById('itemList').addEventListener('click', (e) => {
 document.getElementById('newItemBtn').addEventListener('click', clearForm);
 document.getElementById('saveItemBtn').addEventListener('click', saveItem);
 document.getElementById('deleteItemBtn').addEventListener('click', deleteItem);
-function editPre-Flight(flightId) {
+function editPreFlight(flightId) {
     const flight = flightLog.find(f => f.id === flightId);
     if (!flight || flight.status !== 'Pending') return;
     
@@ -749,4 +749,5 @@ window.addEventListener('DOMContentLoaded', () => {
             .then(registration => console.log('SW registered'))
             .catch(error => console.log('SW registration failed'));
     }
+
 });
