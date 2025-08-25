@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en" class="dark"> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f6">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Rocket Flight Center">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
-    <title>Model Rocket Flight Log & Calculator</title>
+    <title>Model Rocket Flight Log</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Configure Tailwind for offline use
+        // Configure Tailwind for class-based dark mode
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -34,100 +34,104 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-black text-gray-300 flex items-center justify-center min-h-screen p-2">
+<body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-300 flex items-center justify-center min-h-screen p-2 transition-colors duration-300">
 
-    <div class="w-full max-w-4xl mx-auto bg-gray-900 rounded-2xl shadow-2xl p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-200">Rocket Flight Center</h1>
-            <p class="text-gray-400 mt-2">Manage your fleet, log flights, and analyze performance.</p>
+    <div class="w-full max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 md:p-8">
+        <header class="relative text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-200">Rocket Flight Center</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Manage your fleet, log flights, and analyze performance.</p>
+            <button id="theme-toggle-btn" class="absolute top-0 right-0 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
+                <svg id="sun-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg id="moon-icon" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <button id="manageRocketsBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Rockets</button>
-            <button id="manageEnginesBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Engines</button>
+            <button id="manageRocketsBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Rockets</button>
+            <button id="manageEnginesBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Engines</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button id="startPreFlightBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg">Start Pre-Flight</button>
             <button id="viewFlightLogBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg">View Flight Log</button>
         </div>
-        
-        <footer id="app-footer" class="text-center text-xs text-gray-600 mt-8">
+
+        <footer id="app-footer" class="text-center text-xs text-gray-400 dark:text-gray-600 mt-8">
         </footer>
     </div>
 
     <div id="manageModal" class="modal">
-        <div class="modal-content bg-gray-900 rounded-lg shadow-xl">
-            <div class="p-6 border-b border-gray-700">
-                 <h2 id="modalTitle" class="text-2xl font-bold text-gray-200">Manage</h2>
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                 <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-gray-200">Manage</h2>
             </div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-black/50 p-3 rounded-lg">
-                        <h3 class="font-semibold mb-2">Saved Profiles</h3>
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Saved Profiles</h3>
                         <div id="itemList" class="space-y-1 max-h-96 overflow-y-auto"></div>
-                        <button id="newItemBtn" class="w-full mt-3 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">New</button>
+                        <button id="newItemBtn" class="w-full mt-3 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">New</button>
                     </div>
                     <div class="md:col-span-2 space-y-4">
                         <div id="formContainer" class="space-y-4"></div>
-                        <div id="dataDisplay" class="bg-black/50 p-4 rounded-lg hidden">
-                            <h4 class="font-semibold text-gray-300 mb-2">Complete Data</h4>
+                        <div id="dataDisplay" class="bg-gray-100 dark:bg-black/50 p-4 rounded-lg hidden">
+                            <h4 class="font-semibold text-gray-800 dark:text-gray-300 mb-2">Complete Data</h4>
                             <div id="dataContent" class="space-y-2 text-sm"></div>
                         </div>
                     </div>
                 </div>
             </div>
-             <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-700">
+             <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-200 dark:border-gray-700">
                 <button id="deleteItemBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Delete</button>
-                <button class="close-modal-btn bg-gray-800 hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button>
-                <button id="saveItemBtn" class="bg-gray-200 hover:bg-white text-black font-bold py-2 px-4 rounded-lg">Save</button>
+                <button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button>
+                <button id="saveItemBtn" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black font-bold py-2 px-4 rounded-lg">Save</button>
             </div>
         </div>
     </div>
 
     <div id="preFlightModal" class="modal">
-        <div class="modal-content bg-gray-900 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-gray-200 mb-6">New Pre-Flight Check</h2>
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-200 mb-6">New Pre-Flight Check</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="preFlightRocketSelect" class="block mb-1 text-sm font-medium text-gray-400">Select Rocket</label>
-                    <select id="preFlightRocketSelect" class="w-full bg-gray-800 border border-gray-700 rounded p-2"></select>
+                    <label for="preFlightRocketSelect" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Select Rocket</label>
+                    <select id="preFlightRocketSelect" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2"></select>
                 </div>
                 <div>
-                    <label for="preFlightEngineSelect" class="block mb-1 text-sm font-medium text-gray-400">Select Engine</label>
-                    <select id="preFlightEngineSelect" class="w-full bg-gray-800 border border-gray-700 rounded p-2"></select>
+                    <label for="preFlightEngineSelect" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Select Engine</label>
+                    <select id="preFlightEngineSelect" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2"></select>
                 </div>
                 <div>
-                    <label for="launchRodLength" class="block mb-1 text-sm font-medium text-gray-400">Launch Rod Length (m)</label>
-                    <input id="launchRodLength" type="number" step="0.1" value="1.0" class="w-full bg-gray-800 border border-gray-700 rounded p-2" placeholder="1.0">
+                    <label for="launchRodLength" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Launch Rod Length (m)</label>
+                    <input id="launchRodLength" type="number" step="0.1" value="1.0" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2" placeholder="1.0">
                 </div>
             </div>
-            <div class="flex justify-end gap-4 mt-8 border-t border-gray-700 pt-4">
-                <button class="close-modal-btn bg-gray-800 hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="savePreFlightBtn" class="bg-gray-200 hover:bg-white text-black font-bold py-2 px-4 rounded-lg">Save & Estimate</button>
+            <div class="flex justify-end gap-4 mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button id="savePreFlightBtn" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black font-bold py-2 px-4 rounded-lg">Save & Estimate</button>
             </div>
         </div>
     </div>
 
     <div id="flightLogModal" class="modal">
-        <div class="modal-content bg-gray-900 rounded-lg shadow-xl">
-            <div class="p-6 border-b border-gray-700">
-                <h2 class="text-2xl font-bold text-gray-200">Flight Log</h2>
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-200">Flight Log</h2>
             </div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-black/50 p-3 rounded-lg">
-                        <h3 class="font-semibold mb-2">Logged Flights</h3>
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Logged Flights</h3>
                         <div id="flightList" class="space-y-1 max-h-[65vh] overflow-y-auto"></div>
                     </div>
                     <div id="flightDetailsContainer" class="md:col-span-2 space-y-4">
-                        <div class="text-center text-gray-400 p-8">Select a flight to view details.</div>
+                        <div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-700">
-                <button id="editFlightBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Edit Pre-Flight</button>
+            <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-200 dark:border-gray-700">
+                <button id="editFlightBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Edit Pre-Flight</button>
                 <button id="deleteFlightBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg hidden">Delete Flight</button>
-                <button class="close-modal-btn bg-gray-800 hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button>
+                <button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button>
             </div>
         </div>
     </div>
@@ -135,4 +139,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
