@@ -1,4 +1,4 @@
-const appVersion = '1.2.2';
+const appVersion = '1.2.3';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -498,8 +498,8 @@ function analyzeFlightData(flightId) {
             }
             lastTimeS = timeS;
 
-            // Check for end of boost phase
-            if (isBoosting && totalAccelZGs <= gravityG) {
+            // Check for end of boost phase by checking if net acceleration is <= 0
+            if (isBoosting && flightAccelMs2 <= 0) {
                 altitudeAtBoostEnd = altitudeM;
                 isBoosting = false;
             }
