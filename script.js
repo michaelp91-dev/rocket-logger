@@ -1,4 +1,4 @@
-const appVersion = '1.2.1';
+const appVersion = '1.2.2';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -350,7 +350,7 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                     <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Calculated Values</h5>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><strong>Center of Pressure:</strong> ${(rocket.calculate_cop() * 100).toFixed(2)}cm</div>
-                        <div><strong>Mid Chord:</strong> ${(rocket.fin_mid_chord_length * 100).toFixed(2)}cm</div>
+                        <div><strong>Mid Chord Length:</strong> ${(rocket.fin_mid_chord_length * 100).toFixed(2)}cm</div>
                     </div>
                 </div>
             </div>
@@ -412,6 +412,23 @@ function generatePostFlightReport(flight) {
                 <div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div>
                 <div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(2)} m/s</p></div>
             </div>
+            <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg">
+                <h5 class="text-xs font-semibold mb-2 text-left">Flight Metrics</h5>
+                <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div class="bg-gray-300 dark:bg-gray-600/50 p-2 rounded-md">
+                        <p class="text-xs">Boost Gain</p>
+                        <p class="font-bold">${flight.actuals.boostAltitude.toFixed(2)} m</p>
+                    </div>
+                    <div class="bg-gray-300 dark:bg-gray-600/50 p-2 rounded-md">
+                        <p class="text-xs">Coast Gain</p>
+                        <p class="font-bold">${flight.actuals.coastAltitude.toFixed(2)} m</p>
+                    </div>
+                    <div class="bg-gray-300 dark:bg-gray-600/50 p-2 rounded-md">
+                        <p class="text-xs">Time to Apogee</p>
+                        <p class="font-bold">${(flight.actuals.apogeeTime / 1000).toFixed(2)} s</p>
+                    </div>
+                </div>
+            </div>
             <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div>
             <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="accelChart"></canvas></div>
         </div>
@@ -448,6 +465,10 @@ function analyzeFlightData(flightId) {
         let maxVelocity = -Infinity;
         let currentVelocity = 0;
         let lastTimeS = 0;
+        let boostAltitude = 0;
+        let apogeeTime = 0;
+        let isBoosting = true;
+        let altitudeAtBoostEnd = 0;
 
         // Use the initial Accel_Z_Raw value as the gravity baseline
         const initialAccelZRaw = parseFloat(dataLines[0].split(',')[5]);
@@ -477,13 +498,27 @@ function analyzeFlightData(flightId) {
             }
             lastTimeS = timeS;
 
-            // Update max values
-            if (altitudeM > maxAltitude) maxAltitude = altitudeM;
+            // Check for end of boost phase
+            if (isBoosting && totalAccelZGs <= gravityG) {
+                altitudeAtBoostEnd = altitudeM;
+                isBoosting = false;
+            }
+
+            // Update max values and apogee time
+            if (altitudeM > maxAltitude) {
+                maxAltitude = altitudeM;
+                apogeeTime = timeS;
+            }
             if (Math.abs(totalAccelZGs) > maxGForce) maxGForce = Math.abs(totalAccelZGs);
             if (currentVelocity > maxVelocity) maxVelocity = currentVelocity;
         });
 
-        flight.actuals = { maxAltitude, maxGForce, maxVelocity };
+        // Calculate boost and coast altitude gains
+        boostAltitude = altitudeAtBoostEnd;
+        const coastAltitude = maxAltitude - boostAltitude;
+        
+
+        flight.actuals = { maxAltitude, maxGForce, maxVelocity, boostAltitude, coastAltitude, apogeeTime };
         flight.rawData = csvText;
         if (flight.status === 'Pending') {
             flight.status = document.getElementById('flightStatus').value;
@@ -898,4 +933,3 @@ window.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.log('SW registration failed'));
     }
 });
-
