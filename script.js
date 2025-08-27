@@ -119,7 +119,9 @@ document.getElementById('savePreFlightBtn').addEventListener('click', () => {
     const launchRodLength = parseFloat(document.getElementById('launchRodLength').value) || 1.0;
     
     if (!rocketId || !engineId) {
-        alert('Please select both a rocket and an engine.');
+        // Use a message box instead of alert()
+        const message = 'Please select both a rocket and an engine.';
+        showCustomAlert(message);
         return;
     }
 
@@ -275,8 +277,7 @@ function generateEquationsDisplay(flight) {
     const v = q * (1 - Math.exp(-x * t_burn)) / (1 + Math.exp(-x * t_burn));
     const yb_num = T - M * g - k * Math.pow(v, 2);
     const yb = (yb_num <= 0) ? 0 : (-M / (2 * k)) * Math.log(yb_num / (T - M * g));
-    const yc_num = M * g + k * Math.pow(v, 2);
-    const yc = (M / (2 * k)) * Math.log(yc_num / (M * g));
+    const yc = (M / (2 * k)) * Math.log((M * g + k * Math.pow(v, 2)) / (M * g));
     const total_altitude = yb + yc;
     
     const thrust_to_weight_ratio = T / (M * g);
@@ -348,7 +349,7 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                 <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Calculated Values</h5>
                     <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>COP:</strong> ${(rocket.calculate_cop() * 100).toFixed(2)}cm</div>
+                        <div><strong>Center of Pressure:</strong> ${(rocket.calculate_cop() * 100).toFixed(2)}cm</div>
                         <div><strong>Mid Chord:</strong> ${(rocket.fin_mid_chord_length * 100).toFixed(2)}cm</div>
                     </div>
                 </div>
@@ -358,10 +359,10 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                 <div class="grid grid-cols-2 gap-2 text-sm">
                     <div><strong>Name:</strong> ${engineData.motor_name}</div>
                     <div><strong>Initial Mass:</strong> ${engineData.motor_initial_mass_g}g</div>
-                    <div><strong>Propellant:</strong> ${engineData.motor_propellant_mass_g}g</div>
-                    <div><strong>Avg Thrust:</strong> ${engineData.motor_avg_thrust_n}N</div>
+                    <div><strong>Propellant Mass:</strong> ${engineData.motor_propellant_mass_g}g</div>
+                    <div><strong>Average Thrust:</strong> ${engineData.motor_avg_thrust_n}N</div>
                     <div><strong>Peak Thrust:</strong> ${engineData.motor_peak_thrust_n || engineData.motor_avg_thrust_n}N</div>
-                    <div><strong>Peak Time:</strong> ${engineData.motor_peak_time_s || 0.1}s</div>
+                    <div><strong>Time to Peak:</strong> ${engineData.motor_peak_time_s || 0.1}s</div>
                     <div><strong>Burn Time:</strong> ${engineData.motor_burn_time_s}s</div>
                 </div>
             </div>
@@ -426,34 +427,62 @@ function saveFlightReport(flightId) {
     populateFlightList();
     viewFlightDetails(flightId);
 }
-
+// Corrected logic for analyzing flight data
 function analyzeFlightData(flightId) {
     const flight = flightLog.find(f => f.id === flightId);
     const csvText = document.getElementById('csvData').value.trim();
-    if (!csvText) { alert('Please paste CSV data.'); return; }
+    if (!csvText) { 
+        showCustomAlert('Please paste CSV data.'); 
+        return; 
+    }
     const lines = csvText.split('\n').filter(line => line.trim() !== '');
-    if (lines.length <= 1) { alert('No data rows found.'); return; }
+    if (lines.length <= 1) { 
+        showCustomAlert('No data rows found.'); 
+        return; 
+    }
 
     try {
         const dataLines = lines.slice(1);
-        let maxAltitude = -Infinity, maxGForce = -Infinity, maxVelocity = -Infinity, currentVelocity = 0, lastTimeS = 0;
-        const basePressureHpa = (parseFloat(dataLines[0].split(',')[1]) / 4.0) / 100.0;
-        const gravityG = parseFloat(dataLines[0].split(',')[4]) / 256.0;
+        let maxAltitude = -Infinity;
+        let maxGForce = -Infinity;
+        let maxVelocity = -Infinity;
+        let currentVelocity = 0;
+        let lastTimeS = 0;
+
+        // Use the initial Accel_Z_Raw value as the gravity baseline
+        const initialAccelZRaw = parseFloat(dataLines[0].split(',')[5]);
+        const gravityG = initialAccelZRaw / 256.0;
+
+        const basePressureRaw = parseFloat(dataLines[0].split(',')[1]);
+        const basePressureHpa = (basePressureRaw / 4.0) / 100.0;
+        
         dataLines.forEach(line => {
             const values = line.split(',');
             if (values.length < 6) return;
             const timeS = parseFloat(values[0]) / 1000.0;
-            const pressureHpa = (parseFloat(values[1]) / 4.0) / 100.0;
-            const ayG = parseFloat(values[4]) / 256.0;
+            const pressureRaw = parseFloat(values[1]);
+            const accelZRaw = parseFloat(values[5]);
+
+            const pressureHpa = (pressureRaw / 4.0) / 100.0;
             const altitudeM = 44330.0 * (1.0 - Math.pow(pressureHpa / basePressureHpa, 0.1903));
-            const verticalAccelMs2 = (ayG - gravityG) * 9.81;
-            currentVelocity += verticalAccelMs2 * (timeS - lastTimeS);
+            
+            // Calculate total G-force and subtract 1G for vertical acceleration
+            const totalAccelZGs = accelZRaw / 256.0;
+            const flightAccelMs2 = (totalAccelZGs - gravityG) * 9.81;
+
+            if (timeS > lastTimeS) {
+                const deltaTimeS = timeS - lastTimeS;
+                // Integrate acceleration to get velocity, using the true flight acceleration
+                currentVelocity += flightAccelMs2 * deltaTimeS;
+            }
             lastTimeS = timeS;
 
+            // Update max values
             if (altitudeM > maxAltitude) maxAltitude = altitudeM;
-            if (Math.abs(ayG) > maxGForce) maxGForce = Math.abs(ayG);
+            if (Math.abs(totalAccelZGs) > maxGForce) maxGForce = Math.abs(totalAccelZGs);
             if (currentVelocity > maxVelocity) maxVelocity = currentVelocity;
         });
+
         flight.actuals = { maxAltitude, maxGForce, maxVelocity };
         flight.rawData = csvText;
         if (flight.status === 'Pending') {
@@ -464,7 +493,7 @@ function analyzeFlightData(flightId) {
         populateFlightList();
         viewFlightDetails(flightId);
     } catch (error) {
-        alert("Failed to parse flight data. Please check the format.");
+        showCustomAlert("Failed to parse flight data. Please check the format.");
         console.error("Analysis Error:", error);
     }
 }
@@ -475,18 +504,42 @@ function renderCharts(flightId) {
 
     const dataLines = flight.rawData.split('\n').filter(line => line.trim() !== '').slice(1);
     let processedData = [];
-    const basePressureHpa = (parseFloat(dataLines[0].split(',')[1]) / 4.0) / 100.0;
+    
+    const initialAccelZRaw = parseFloat(dataLines[0].split(',')[5]);
+    const gravityG = initialAccelZRaw / 256.0;
+    
+    let currentVelocity = 0;
+    let lastTimeS = 0;
+
+    const basePressureRaw = parseFloat(dataLines[0].split(',')[1]);
+    const basePressureHpa = (basePressureRaw / 4.0) / 100.0;
 
     dataLines.forEach(line => {
          const values = line.split(',');
          if (values.length < 6) return;
          const timeS = parseFloat(values[0]) / 1000.0;
-         const pressureHpa = (parseFloat(values[1]) / 4.0) / 100.0;
+         const pressureRaw = parseFloat(values[1]);
+         const accelXRaw = parseFloat(values[3]);
+         const accelYRaw = parseFloat(values[4]);
+         const accelZRaw = parseFloat(values[5]);
+         
+         const pressureHpa = (pressureRaw / 4.0) / 100.0;
          const altitudeM = 44330.0 * (1.0 - Math.pow(pressureHpa / basePressureHpa, 0.1903));
-         const axG = parseFloat(values[3]) / 256.0;
-         const ayG = parseFloat(values[4]) / 256.0;
-         const azG = parseFloat(values[5]) / 256.0;
-         processedData.push({ timeS, altitudeM, axG, ayG, azG });
+         
+         const accelXG = accelXRaw / 256.0;
+         const accelYG = accelYRaw / 256.0;
+         const accelZG = accelZRaw / 256.0;
+
+         const totalAccelZGs = accelZRaw / 256.0;
+         const flightAccelMs2 = (totalAccelZGs - gravityG) * 9.81;
+
+         if (timeS > lastTimeS) {
+            const deltaTimeS = timeS - lastTimeS;
+            currentVelocity += flightAccelMs2 * deltaTimeS;
+         }
+         lastTimeS = timeS;
+
+         processedData.push({ timeS, altitudeM, accelXG, accelYG, accelZG, velocity: currentVelocity });
     });
     
     const labels = processedData.map(d => d.timeS.toFixed(3));
@@ -508,9 +561,35 @@ function renderCharts(flightId) {
     if(altCtx) new Chart(altCtx, { type: 'line', data: { labels, datasets: [{ label: 'Altitude (m)', data: processedData.map(d => d.altitudeM), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0 }] }, options: chartOptions });
     
     const accelCtx = document.getElementById('accelChart')?.getContext('2d');
-    if(accelCtx) new Chart(accelCtx, { type: 'line', data: { labels, datasets: [ { label: 'Accel X (G)', data: processedData.map(d => d.axG), borderColor: '#ec4899', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Y (G)', data: processedData.map(d => d.ayG), borderColor: '#22c55e', borderWidth: 2, pointRadius: 0 }, { label: 'Accel Z (G)', data: processedData.map(d => d.azG), borderColor: '#8b5cf6', borderWidth: 2, pointRadius: 0 } ] }, options: chartOptions });
+    if(accelCtx) new Chart(accelCtx, { type: 'line', data: { labels, datasets: [ 
+        { label: 'Accel X (G)', data: processedData.map(d => d.accelXG), borderColor: '#ec4899', borderWidth: 2, pointRadius: 0 }, 
+        { label: 'Accel Y (G)', data: processedData.map(d => d.accelYG), borderColor: '#22c55e', borderWidth: 2, pointRadius: 0 }, 
+        { label: 'Accel Z (G)', data: processedData.map(d => d.accelZG), borderColor: '#8b5cf6', borderWidth: 2, pointRadius: 0 } 
+    ] }, options: chartOptions });
 }
 
+// Custom Alert Modal
+function showCustomAlert(message) {
+    const existingAlert = document.getElementById('custom-alert-modal');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    const modalHtml = `
+        <div id="custom-alert-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-[1000]">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+                <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Error</h4>
+                <p class="text-sm text-gray-700 dark:text-gray-300 mb-6">${message}</p>
+                <div class="flex justify-end">
+                    <button onclick="document.getElementById('custom-alert-modal').remove();" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 // --- PERFORMANCE ESTIMATION ---
 function calculatePerformance(rocketData, engineData, launchRodLength = 1.0) {
     const rocket = new Rocket(rocketData);
@@ -678,7 +757,10 @@ function saveItem() {
     const data = { id: editingItemId || Date.now().toString() };
     for (const field of fields) {
         const value = document.getElementById(field.id).value;
-        if (!value) { alert(`Please fill out the "${field.label}" field.`); return; }
+        if (!value) { 
+            showCustomAlert(`Please fill out the "${field.label}" field.`);
+            return; 
+        }
         data[field.id] = value;
     }
     if (editingItemId) {
@@ -691,7 +773,8 @@ function saveItem() {
     manageModal.style.display = 'none';
 }
 function deleteItem() {
-    if (!editingItemId || !confirm('Are you sure?')) return;
+    if (!editingItemId) return;
+    if (!confirm('Are you sure?')) return;
     if (currentModalType === 'rocket') {
         rocketList = rocketList.filter(item => item.id !== editingItemId);
     } else {
@@ -754,7 +837,7 @@ function updatePreFlight(flightId) {
     const launchRodLength = parseFloat(document.getElementById('launchRodLength').value) || 1.0;
     
     if (!rocketId || !engineId) {
-        alert('Please select both a rocket and an engine.');
+        showCustomAlert('Please select both a rocket and an engine.');
         return;
     }
 
@@ -815,4 +898,3 @@ window.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.log('SW registration failed'));
     }
 });
-
