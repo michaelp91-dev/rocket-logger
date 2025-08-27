@@ -1,4 +1,4 @@
-const appVersion = '1.2.0';
+const appVersion = '1.2.1';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -898,3 +898,4 @@ window.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.log('SW registration failed'));
     }
 });
+
