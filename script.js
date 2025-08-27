@@ -1,4 +1,4 @@
-const appVersion = '1.2.4';
+const appVersion = '1.2.5';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -279,46 +279,17 @@ function generateEquationsDisplay(flight) {
     const yb = (yb_num <= 0) ? 0 : (-M / (2 * k)) * Math.log(yb_num / (T - M * g));
     const yc = (M / (2 * k)) * Math.log((M * g + k * Math.pow(v, 2)) / (M * g));
     const total_altitude = yb + yc;
-    
-    const thrust_to_weight_ratio = T / (M * g);
-    const min_thrust_needed = M * ((Math.pow(10, 2) / (2 * launchRodLength)) + g);
-    const launch_rod_velocity = Math.sqrt(2 * ((motor.peak_thrust - M * g) / M) * launchRodLength);
-    
-    return `
-        <div class="space-y-4">
-            <div>
-                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Center of Pressure (COP)</h5>
-                <p class="mb-2">Formula: $COP = \\frac{(C_{N,nose} \\cdot CP_{nose}) + (C_{N,fins} \\cdot CP_{fins})}{C_{N,nose} + C_{N,fins}}$</p>
-                <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li>Nose Cone $C_{N,nose}$: <strong>${cn_nose.toFixed(2)}</strong> (constant)</li>
-                    <li>Nose Cone $CP_{nose}$ (${nose_cone_type_label}): $${nose_cp_factor} \\cdot L_{nose}$ = <strong>${(cp_nose_m*100).toFixed(2)} cm</strong></li>
-                    <li>Fin Interference Factor: <strong>${interference.toFixed(3)}</strong></li>
-                    <li>Fins $C_{N,fins}$: <strong>${cn_fins.toFixed(3)}</strong></li>
-                    <li>Fins $CP_{fins}$: <strong>${(cp_fins_m*100).toFixed(2)} cm</strong> (from nose tip)</li>
-                    <li><strong>Final COP</strong>: <strong>${(cop_m*100).toFixed(2)} cm</strong> (from nose tip)</li>
-                </ul>
-            </div>
-            <div>
-                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Estimated Altitude & Velocity</h5>
-                <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li>Air Density ($\\rho$): <strong>${rho} kg/m^3</strong>, Drag Coeff. ($C_d$): <strong>${Cd}</strong></li>
-                    <li>Cross-sectional Area (A): <strong>${area.toFixed(5)} m^2</strong></li>
-                    <li><strong>Est. Max Velocity (v)</strong>: <strong>${v.toFixed(2)} m/s</strong></li>
-                    <li>Burnout Altitude ($y_b$): <strong>${yb.toFixed(2)} m</strong></li>
-                    <li>Coasting Altitude ($y_c$): <strong>${yc.toFixed(2)} m</strong></li>
-                    <li><strong>Est. Total Altitude ($y_b + y_c$)</strong>: <strong>${total_altitude.toFixed(2)} m</strong></li>
-                </ul>
-            </div>
-            <div>
-                <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Launch Stability & Thrust</h5>
-                <ul class="list-disc list-inside space-y-1 pl-2">
-                    <li><strong>Thrust-to-Weight Ratio</strong>: <strong>${thrust_to_weight_ratio.toFixed(2)}</strong></li>
-                    <li><strong>Min Thrust Needed</strong>: <strong>${min_thrust_needed.toFixed(2)} N</strong></li>
-                    <li><strong>Launch Rod Velocity</strong>: <strong>${launch_rod_velocity.toFixed(2)} m/s</strong></li>
-                </ul>
-            </div>
-        </div>
-    `;
+    const stability_calibers = (rocket.calculate_cop() - rocket.cog) / rocket.diameter;
+
+    return { 
+        total_altitude, 
+        v, 
+        stability_calibers,
+        launch_rod_velocity,
+        min_thrust_needed,
+        thrust_to_weight_ratio,
+        loaded_mass
+    };
 }
 
 function generateRocketEngineDataDisplay(rocketData, engineData) {
@@ -336,7 +307,7 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                     <div><strong>Dry Mass:</strong> ${rocketData.dry_mass_g}g</div>
                     <div><strong>Length:</strong> ${rocketData.length_cm}cm</div>
                     <div><strong>Diameter:</strong> ${rocketData.diameter_cm}cm</div>
-                    <div><strong>Nose Type:</strong> ${rocketData.nose_cone_type === 'cone' ? 'Cone' : 'Ogive'}</div>
+                    <div><strong>Nose Cone Type:</strong> ${rocketData.nose_cone_type === 'cone' ? 'Cone' : 'Ogive'}</div>
                     <div><strong>Nose Cone Length:</strong> ${rocketData.nose_cone_length_cm}cm</div>
                     <div><strong>Center of Gravity:</strong> ${rocketData.cog_cm}cm</div>
                     <div><strong>Number of Fins:</strong> ${rocketData.num_fins}</div>
@@ -427,6 +398,14 @@ function generatePostFlightReport(flight) {
                         <p class="text-xs">Time to Apogee</p>
                         <p class="font-bold">${(flight.actuals.apogeeTime / 1000).toFixed(2)} s</p>
                     </div>
+                    <div class="bg-gray-300 dark:bg-gray-600/50 p-2 rounded-md">
+                        <p class="text-xs">Boost Time</p>
+                        <p class="font-bold">${(flight.actuals.boostTime / 1000).toFixed(2)} s</p>
+                    </div>
+                    <div class="bg-gray-300 dark:bg-gray-600/50 p-2 rounded-md">
+                        <p class="text-xs">Coast Time</p>
+                        <p class="font-bold">${(flight.actuals.coastTime / 1000).toFixed(2)} s</p>
+                    </div>
                 </div>
             </div>
             <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div>
@@ -464,6 +443,8 @@ function analyzeFlightData(flightId) {
         let maxGForce = -Infinity;
         let maxVelocity = -Infinity;
         let apogeeTime = 0;
+        let boostTime = 0;
+        let coastTime = 0;
 
         const initialAccelZRaw = parseFloat(dataLines[0].split(',')[5]);
         const gravityG = initialAccelZRaw / 256.0;
@@ -471,12 +452,9 @@ function analyzeFlightData(flightId) {
         const basePressureRaw = parseFloat(dataLines[0].split(',')[1]);
         const basePressureHpa = (basePressureRaw / 4.0) / 100.0;
         
-        // Step 1: Process data to find altitudes, G-forces, and velocities
         let processedData = [];
         let currentVelocity = 0;
         let lastTimeS = 0;
-        let boostEndAltitude = 0;
-        let isBoosting = true;
         
         dataLines.forEach(line => {
             const values = line.split(',');
@@ -503,43 +481,52 @@ function analyzeFlightData(flightId) {
             }
             lastTimeS = timeS;
 
-            processedData.push({ timeS, altitudeM, accelXG, accelYG, accelZG, velocity: currentVelocity });
+            processedData.push({ timeS, altitudeM, accelXG, accelYG, accelZG, velocity: currentVelocity, flightAccelMs2 });
         });
 
-        // Step 2: Find the end of the boost phase and apogee
-        let maxVelocityFound = -Infinity;
-        let boostEndFound = false;
+        // Find the boost and coast phase end points
+        let boostEndIndex = -1;
+        let apogeeIndex = -1;
         
-        for (let i = 0; i < processedData.length; i++) {
-            const point = processedData[i];
-            
-            // Find max G-force
-            if (Math.abs(point.accelZG) > maxGForce) {
-                maxGForce = Math.abs(point.accelZG);
-            }
+        // Find the index of maximum velocity, which marks the end of the boost phase
+        let maxVelocityIndex = processedData.reduce((maxIndex, current, i, arr) => {
+            return current.velocity > arr[maxIndex].velocity ? i : maxIndex;
+        }, 0);
+        
+        if (maxVelocityIndex !== -1) {
+            boostEndIndex = maxVelocityIndex;
+            maxVelocity = processedData[boostEndIndex].velocity;
+        }
 
-            // Find max altitude and apogee time
-            if (point.altitudeM > maxAltitude) {
-                maxAltitude = point.altitudeM;
-                apogeeTime = point.timeS * 1000;
-            }
+        // Find the index of maximum altitude, which is apogee
+        let maxAltitudeIndex = processedData.reduce((maxIndex, current, i, arr) => {
+            return current.altitudeM > arr[maxIndex].altitudeM ? i : maxIndex;
+        }, 0);
+        
+        if (maxAltitudeIndex !== -1) {
+            apogeeIndex = maxAltitudeIndex;
+            maxAltitude = processedData[apogeeIndex].altitudeM;
+            apogeeTime = processedData[apogeeIndex].timeS * 1000;
+        }
 
-            // Find max velocity and boost end altitude
-            if (!boostEndFound && point.velocity > maxVelocityFound) {
-                maxVelocityFound = point.velocity;
-            } else if (!boostEndFound && point.velocity < maxVelocityFound) {
-                // Velocity is now decreasing, so we've passed max velocity and are in the coast phase.
-                boostEndAltitude = point.altitudeM;
-                boostEndFound = true;
-                maxVelocity = maxVelocityFound;
-            }
+        let boostAltitude = 0;
+        if (boostEndIndex !== -1) {
+            boostAltitude = processedData[boostEndIndex].altitudeM;
+            boostTime = processedData[boostEndIndex].timeS * 1000;
+        }
+
+        let coastAltitude = 0;
+        if (apogeeIndex !== -1 && boostEndIndex !== -1) {
+            coastAltitude = processedData[apogeeIndex].altitudeM - processedData[boostEndIndex].altitudeM;
+            coastTime = (processedData[apogeeIndex].timeS - processedData[boostEndIndex].timeS) * 1000;
         }
         
-        // Final calculations
-        const boostAltitude = boostEndAltitude;
-        const coastAltitude = maxAltitude - boostAltitude;
-        
-        flight.actuals = { maxAltitude, maxGForce, maxVelocity, boostAltitude, coastAltitude, apogeeTime };
+        // Find max G-force
+        maxGForce = processedData.reduce((maxG, current) => {
+            return Math.abs(current.accelZG) > maxG ? Math.abs(current.accelZG) : maxG;
+        }, -Infinity);
+
+        flight.actuals = { maxAltitude, maxGForce, maxVelocity, boostAltitude, coastAltitude, apogeeTime, boostTime, coastTime };
         flight.rawData = csvText;
         if (flight.status === 'Pending') {
             flight.status = document.getElementById('flightStatus').value;
