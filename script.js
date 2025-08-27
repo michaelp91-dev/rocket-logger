@@ -1,4 +1,4 @@
-const appVersion = '1.2.3';
+const appVersion = '1.2.4';
 
 // --- DATA STRUCTURES ---
 let rocketList = [];
@@ -337,14 +337,14 @@ function generateRocketEngineDataDisplay(rocketData, engineData) {
                     <div><strong>Length:</strong> ${rocketData.length_cm}cm</div>
                     <div><strong>Diameter:</strong> ${rocketData.diameter_cm}cm</div>
                     <div><strong>Nose Type:</strong> ${rocketData.nose_cone_type === 'cone' ? 'Cone' : 'Ogive'}</div>
-                    <div><strong>Nose Length:</strong> ${rocketData.nose_cone_length_cm}cm</div>
-                    <div><strong>COG:</strong> ${rocketData.cog_cm}cm</div>
-                    <div><strong>Fins:</strong> ${rocketData.num_fins}</div>
+                    <div><strong>Nose Cone Length:</strong> ${rocketData.nose_cone_length_cm}cm</div>
+                    <div><strong>Center of Gravity:</strong> ${rocketData.cog_cm}cm</div>
+                    <div><strong>Number of Fins:</strong> ${rocketData.num_fins}</div>
                     <div><strong>Root Chord:</strong> ${rocketData.fin_root_chord_cm}cm</div>
                     <div><strong>Tip Chord:</strong> ${rocketData.fin_tip_chord_cm}cm</div>
                     <div><strong>Semi-Span:</strong> ${rocketData.fin_semi_span_cm}cm</div>
-                    <div><strong>Sweep:</strong> ${rocketData.fin_sweep_dist_cm}cm</div>
-                    <div><strong>Nose to Fin:</strong> ${rocketData.nose_to_fin_dist_cm}cm</div>
+                    <div><strong>Sweep Distance:</strong> ${rocketData.fin_sweep_dist_cm}cm</div>
+                    <div><strong>Nose to Fin Distance:</strong> ${rocketData.nose_to_fin_dist_cm}cm</div>
                 </div>
                 <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <h5 class="font-semibold text-cyan-500 dark:text-cyan-300 mb-2">Calculated Values</h5>
@@ -463,61 +463,82 @@ function analyzeFlightData(flightId) {
         let maxAltitude = -Infinity;
         let maxGForce = -Infinity;
         let maxVelocity = -Infinity;
-        let currentVelocity = 0;
-        let lastTimeS = 0;
-        let boostAltitude = 0;
         let apogeeTime = 0;
-        let isBoosting = true;
-        let altitudeAtBoostEnd = 0;
 
-        // Use the initial Accel_Z_Raw value as the gravity baseline
         const initialAccelZRaw = parseFloat(dataLines[0].split(',')[5]);
         const gravityG = initialAccelZRaw / 256.0;
 
         const basePressureRaw = parseFloat(dataLines[0].split(',')[1]);
         const basePressureHpa = (basePressureRaw / 4.0) / 100.0;
         
+        // Step 1: Process data to find altitudes, G-forces, and velocities
+        let processedData = [];
+        let currentVelocity = 0;
+        let lastTimeS = 0;
+        let boostEndAltitude = 0;
+        let isBoosting = true;
+        
         dataLines.forEach(line => {
             const values = line.split(',');
             if (values.length < 6) return;
             const timeS = parseFloat(values[0]) / 1000.0;
             const pressureRaw = parseFloat(values[1]);
+            const accelXRaw = parseFloat(values[3]);
+            const accelYRaw = parseFloat(values[4]);
             const accelZRaw = parseFloat(values[5]);
 
             const pressureHpa = (pressureRaw / 4.0) / 100.0;
             const altitudeM = 44330.0 * (1.0 - Math.pow(pressureHpa / basePressureHpa, 0.1903));
             
-            // Calculate total G-force and subtract 1G for vertical acceleration
+            const accelXG = accelXRaw / 256.0;
+            const accelYG = accelYRaw / 256.0;
+            const accelZG = accelZRaw / 256.0;
+
             const totalAccelZGs = accelZRaw / 256.0;
             const flightAccelMs2 = (totalAccelZGs - gravityG) * 9.81;
 
             if (timeS > lastTimeS) {
                 const deltaTimeS = timeS - lastTimeS;
-                // Integrate acceleration to get velocity, using the true flight acceleration
                 currentVelocity += flightAccelMs2 * deltaTimeS;
             }
             lastTimeS = timeS;
 
-            // Check for end of boost phase by checking if net acceleration is <= 0
-            if (isBoosting && flightAccelMs2 <= 0) {
-                altitudeAtBoostEnd = altitudeM;
-                isBoosting = false;
-            }
-
-            // Update max values and apogee time
-            if (altitudeM > maxAltitude) {
-                maxAltitude = altitudeM;
-                apogeeTime = timeS;
-            }
-            if (Math.abs(totalAccelZGs) > maxGForce) maxGForce = Math.abs(totalAccelZGs);
-            if (currentVelocity > maxVelocity) maxVelocity = currentVelocity;
+            processedData.push({ timeS, altitudeM, accelXG, accelYG, accelZG, velocity: currentVelocity });
         });
 
-        // Calculate boost and coast altitude gains
-        boostAltitude = altitudeAtBoostEnd;
+        // Step 2: Find the end of the boost phase and apogee
+        let maxVelocityFound = -Infinity;
+        let boostEndFound = false;
+        
+        for (let i = 0; i < processedData.length; i++) {
+            const point = processedData[i];
+            
+            // Find max G-force
+            if (Math.abs(point.accelZG) > maxGForce) {
+                maxGForce = Math.abs(point.accelZG);
+            }
+
+            // Find max altitude and apogee time
+            if (point.altitudeM > maxAltitude) {
+                maxAltitude = point.altitudeM;
+                apogeeTime = point.timeS * 1000;
+            }
+
+            // Find max velocity and boost end altitude
+            if (!boostEndFound && point.velocity > maxVelocityFound) {
+                maxVelocityFound = point.velocity;
+            } else if (!boostEndFound && point.velocity < maxVelocityFound) {
+                // Velocity is now decreasing, so we've passed max velocity and are in the coast phase.
+                boostEndAltitude = point.altitudeM;
+                boostEndFound = true;
+                maxVelocity = maxVelocityFound;
+            }
+        }
+        
+        // Final calculations
+        const boostAltitude = boostEndAltitude;
         const coastAltitude = maxAltitude - boostAltitude;
         
-
         flight.actuals = { maxAltitude, maxGForce, maxVelocity, boostAltitude, coastAltitude, apogeeTime };
         flight.rawData = csvText;
         if (flight.status === 'Pending') {
