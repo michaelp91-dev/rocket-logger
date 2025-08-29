@@ -28,10 +28,4 @@ This repository contains the source code for a web-based **Model Rocket Flight L
 
 ### ⚙️ How to Use
 
-Simply open the `index.html` file in any modern web browser to run the application. No server or additional setup is required. The application will immediately be ready for use, and all data will be saved to your browser's local storage.
-
-***
-
-### 📄 Version
-
-* **Version**: 1.2.5
+To use this application, visit the GitHub Pages site at [https://michaelp91-dev.github.io/rocket-logger/](https://michaelp91-dev.github.io/rocket-logger/). No server or additional setup is required. The application will immediately be ready for use, and all data will be saved to your browser's local storage.
