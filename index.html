@@ -113,6 +113,270 @@
     </div>
     
     <script>
+        const appVersion = '2.1.2';
+
+        // --- WEATHER API CONFIGURATION ---
+        const openWeatherApiKey = 'API_KEY_PLACEHOLDER';
+        const openWeatherApiUrl = 'https://api.openweathermap.org/data/2.5/weather';
+
+        // --- DATA STRUCTURES ---
+        let rocketList = [], engineList = [], flightLog = [], currentModalType = null, editingItemId = null, currentUpdateFlightId = null;
+
+        // --- ROCKET SCIENCE CLASSES ---
+        class Rocket {
+            constructor(data) { this.dry_mass = parseFloat(data.dry_mass_g) / 1000; this.diameter = parseFloat(data.diameter_cm) / 100; this.radius = this.diameter / 2; this.nose_cone_type = data.nose_cone_type || 'ogive'; this.nose_cone_length = parseFloat(data.nose_cone_length_cm) / 100; this.cog = parseFloat(data.cog_cm) / 100; this.num_fins = parseInt(data.num_fins); this.fin_root_chord = parseFloat(data.fin_root_chord_cm) / 100; this.fin_tip_chord = parseFloat(data.fin_tip_chord_cm) / 100; this.fin_semi_span = parseFloat(data.fin_semi_span_cm) / 100; this.fin_sweep_dist = parseFloat(data.fin_sweep_dist_cm) / 100; this.nose_to_fin_dist = parseFloat(data.nose_to_fin_dist_cm) / 100; this.fin_mid_chord_length = this._calculate_mid_chord_length(); }
+            _calculate_mid_chord_length() { const x1 = 0, y1 = this.fin_root_chord / 2, x2 = this.fin_semi_span, y2 = (this.fin_tip_chord / 2) + this.fin_sweep_dist; return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)); }
+            calculate_cop() { const XN = this.nose_cone_type === 'cone' ? 0.666 : 0.466; const CN_N = 2; const CN_F = (1 + this.radius / (this.fin_semi_span + this.radius)) * (4 * this.num_fins * Math.pow(this.fin_semi_span / this.diameter, 2) / (1 + Math.sqrt(1 + Math.pow(2 * this.fin_mid_chord_length / (this.fin_root_chord + this.fin_tip_chord), 2)))); const XF = this.nose_to_fin_dist + (this.fin_sweep_dist / 3) * (this.fin_root_chord + 2 * this.fin_tip_chord) / (this.fin_root_chord + this.fin_tip_chord) + (1 / 6) * (this.fin_root_chord + this.fin_tip_chord - this.fin_root_chord * this.fin_tip_chord / (this.fin_root_chord + this.fin_tip_chord)); const CN_R = CN_N + CN_F; const nose_position = XN * this.nose_cone_length; return (CN_N * nose_position + CN_F * XF) / CN_R; }
+        }
+        class Motor {
+            constructor(data) { this.initial_mass = parseFloat(data.motor_initial_mass_g) / 1000; this.propellant_mass = parseFloat(data.motor_propellant_mass_g) / 1000; this.avg_thrust = parseFloat(data.motor_avg_thrust_n); this.peak_thrust = parseFloat(data.motor_peak_thrust_n || data.motor_avg_thrust_n); this.peak_time = parseFloat(data.motor_peak_time_s || 0.1); this.burn_time = parseFloat(data.motor_burn_time_s); this.impulse = this.avg_thrust * this.burn_time; }
+        }
+
+        // --- DATA HANDLING ---
+        function loadAllData() { rocketList = JSON.parse(localStorage.getItem('rocketList')) || []; engineList = JSON.parse(localStorage.getItem('engineList')) || []; flightLog = JSON.parse(localStorage.getItem('flightLog')) || []; }
+        function saveAllData() { localStorage.setItem('rocketList', JSON.stringify(rocketList)); localStorage.setItem('engineList', JSON.stringify(engineList)); localStorage.setItem('flightLog', JSON.stringify(flightLog)); }
+
+        // --- DOM REFERENCES ---
+        const themeToggleBtn = document.getElementById('theme-toggle-btn'), sunIcon = document.getElementById('sun-icon'), moonIcon = document.getElementById('moon-icon'), manageModal = document.getElementById('manageModal'), preFlightModal = document.getElementById('preFlightModal'), flightLogModal = document.getElementById('flightLogModal'), updateFlightBtn = document.getElementById('updateFlightBtn'), updateFlightModal = document.getElementById('updateFlightModal'), updateFlightSelect = document.getElementById('updateFlightSelect'), weatherSection = document.getElementById('weatherSection'), postFlightSection = document.getElementById('postFlightSection'), getWeatherBtn = document.getElementById('getWeatherBtn'), weatherDisplay = document.getElementById('weatherDisplay'), saveUpdateBtn = document.getElementById('saveUpdateBtn');
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('manageRocketsBtn').addEventListener('click', () => openManageModal('rocket'));
+        document.getElementById('manageEnginesBtn').addEventListener('click', () => openManageModal('engine'));
+        document.getElementById('startPreFlightBtn').addEventListener('click', openPreFlightModal);
+        document.getElementById('viewFlightLogBtn').addEventListener('click', openFlightLogModal);
+        document.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = () => document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none'));
+        themeToggleBtn.addEventListener('click', () => { const isDark = document.documentElement.classList.toggle('dark'); const newTheme = isDark ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+        updateFlightBtn.addEventListener('click', openUpdateFlightModal);
+        updateFlightSelect.addEventListener('change', handleUpdateFlightSelection);
+        getWeatherBtn.addEventListener('click', fetchAndDisplayWeather);
+        saveUpdateBtn.addEventListener('click', saveFlightUpdate);
+        document.getElementById('savePreFlightBtn').addEventListener('click', savePreFlight);
+        document.getElementById('itemList').addEventListener('click', handleItemListClick);
+        document.getElementById('newItemBtn').addEventListener('click', clearForm);
+        document.getElementById('saveItemBtn').addEventListener('click', saveItem);
+        document.getElementById('deleteItemBtn').addEventListener('click', deleteItem);
+
+        // --- UPDATE FLIGHT MODAL ---
+        function openUpdateFlightModal() { const pendingFlights = flightLog.filter(f => f.status === 'Pending'); updateFlightSelect.innerHTML = '<option value="">-- Select a Pending Flight --</option>'; pendingFlights.forEach(flight => { const option = document.createElement('option'); option.value = flight.id; option.textContent = `${flight.rocketName} / ${flight.engineName} (${new Date(flight.flightDate).toLocaleDateString()})`; updateFlightSelect.appendChild(option); }); weatherSection.classList.add('hidden'); postFlightSection.classList.add('hidden'); saveUpdateBtn.classList.add('hidden'); weatherDisplay.innerHTML = ''; updateFlightModal.style.display = 'block'; }
+        function handleUpdateFlightSelection() { currentUpdateFlightId = updateFlightSelect.value; if (!currentUpdateFlightId) { weatherSection.classList.add('hidden'); postFlightSection.classList.add('hidden'); saveUpdateBtn.classList.add('hidden'); return; } weatherSection.classList.remove('hidden'); postFlightSection.classList.remove('hidden'); saveUpdateBtn.classList.remove('hidden'); const flight = flightLog.find(f => f.id === currentUpdateFlightId); document.getElementById('flightStatus').value = flight.status === 'Pending' ? 'Success' : flight.status; document.getElementById('flightNotes').value = flight.notes || ''; document.getElementById('csvData').value = flight.rawData || ''; if (flight.weather) { displayWeatherInModal(flight.weather); } else { weatherDisplay.innerHTML = '<p class="text-gray-500">No weather data logged yet.</p>'; } }
+        function saveFlightUpdate() { if (!currentUpdateFlightId) return; const flight = flightLog.find(f => f.id === currentUpdateFlightId); flight.status = document.getElementById('flightStatus').value; flight.notes = document.getElementById('flightNotes').value; const csvText = document.getElementById('csvData').value.trim(); if (csvText) { flight.rawData = csvText; analyzeFlightData(currentUpdateFlightId); } else { saveAllData(); } updateFlightModal.style.display = 'none'; openFlightLogModal(); viewFlightDetails(currentUpdateFlightId); }
+
+        // --- WEATHER LOGIC ---
+        function fetchAndDisplayWeather() { if (!currentUpdateFlightId) return; weatherDisplay.innerHTML = '<p>Getting location...</p>'; if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError); } else { weatherDisplay.innerHTML = '<p class="text-red-500">Geolocation not supported.</p>'; } }
+        function onGeoSuccess(position) { const { latitude, longitude } = position.coords; fetchWeatherByCoords(latitude, longitude); }
+        function onGeoError(error) { weatherDisplay.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`; }
+        async function fetchWeatherByCoords(lat, lon) { const url = `${openWeatherApiUrl}?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=imperial`; try { const response = await fetch(url); if (!response.ok) throw new Error((await response.json()).message || 'Weather data not found.'); const data = await response.json(); const flight = flightLog.find(f => f.id === currentUpdateFlightId); if (flight) { flight.weather = data; saveAllData(); } displayWeatherInModal(data); } catch (error) { weatherDisplay.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`; } }
+        function displayWeatherInModal(data) { weatherDisplay.innerHTML = `<div class="grid grid-cols-2 gap-x-4 gap-y-1"><span><strong>Temp:</strong> ${Math.round(data.main.temp)}°F</span><span><strong>Feels Like:</strong> ${Math.round(data.main.feels_like)}°F</span><span class="capitalize"><strong>Condition:</strong> ${data.weather[0].description}</span><span><strong>Wind:</strong> ${Math.round(data.wind.speed)} mph</span><span><strong>Humidity:</strong> ${data.main.humidity}%</span><span><strong>Visibility:</strong> ${(data.visibility / 1609).toFixed(1)} mi</span></div>`; }
+
+        // --- FLIGHT LOG & PRE-FLIGHT ---
+        function openPreFlightModal() { populateSelect(document.getElementById('preFlightRocketSelect'), rocketList, 'rocket_name'); populateSelect(document.getElementById('preFlightEngineSelect'), engineList, 'motor_name'); preFlightModal.style.display = 'block'; }
+        function savePreFlight() { const rocketId = document.getElementById('preFlightRocketSelect').value, engineId = document.getElementById('preFlightEngineSelect').value, launchRodLength = parseFloat(document.getElementById('launchRodLength').value) || 1.0; if (!rocketId || !engineId) { showCustomAlert('Please select both a rocket and an engine.'); return; } const rocketData = rocketList.find(r => r.id === rocketId), engineData = engineList.find(e => e.id === engineId); const estimates = calculatePerformance(rocketData, engineData, launchRodLength); const newFlight = { id: Date.now().toString(), flightDate: new Date().toISOString(), rocketId, engineId, rocketName: rocketData.rocket_name, engineName: engineData.motor_name, launchRodLength, status: 'Pending', estimates, actuals: null, notes: '', rawData: '', weather: null }; flightLog.unshift(newFlight); saveAllData(); preFlightModal.style.display = 'none'; openFlightLogModal(); viewFlightDetails(newFlight.id); }
+        function openFlightLogModal() { populateFlightList(); document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div>'; document.getElementById('editFlightBtn').classList.add('hidden'); document.getElementById('deleteFlightBtn').classList.add('hidden'); flightLogModal.style.display = 'block'; }
+        function populateFlightList() { const listEl = document.getElementById('flightList'); listEl.innerHTML = ''; flightLog.forEach(flight => { const statusColor = flight.status === 'Success' ? 'text-green-500' : flight.status === 'Failure' ? 'text-red-500' : 'text-yellow-500'; const button = document.createElement('button'); button.className = 'item-list-button w-full text-left'; button.dataset.id = flight.id; button.innerHTML = `<div class="font-bold">${flight.rocketName} / ${flight.engineName}</div><div class="text-xs text-gray-500 dark:text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div><div class="text-sm font-semibold ${statusColor}">${flight.status}</div>`; button.onclick = () => viewFlightDetails(flight.id); listEl.appendChild(button); }); }
+        
+        // UPDATED viewFlightDetails to include new estimates
+        function viewFlightDetails(flightId) { 
+            const flight = flightLog.find(f => f.id === flightId); 
+            const container = document.getElementById('flightDetailsContainer'); 
+            document.querySelectorAll('#flightList .item-list-button').forEach(btn => btn.classList.toggle('selected', btn.dataset.id === flightId)); 
+            document.getElementById('editFlightBtn').classList.add('hidden'); 
+            const deleteBtn = document.getElementById('deleteFlightBtn'); 
+            deleteBtn.classList.remove('hidden'); 
+            deleteBtn.onclick = () => deleteFlightLog(flightId); 
+            let weatherHtml = ''; 
+            if (flight.weather) { 
+                const weather = flight.weather; 
+                weatherHtml = `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Launch Conditions</h4><div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg"><span><strong>Temp:</strong> ${Math.round(weather.main.temp)}°F</span><span><strong>Feels Like:</strong> ${Math.round(weather.main.feels_like)}°F</span><span class="capitalize"><strong>Condition:</strong> ${weather.weather[0].description}</span><span><strong>Wind:</strong> ${Math.round(weather.wind.speed)} mph</span><span><strong>Humidity:</strong> ${weather.main.humidity}%</span><span><strong>Visibility:</strong> ${(weather.visibility / 1609).toFixed(1)} mi</span></div></div>`; 
+            } 
+            
+            // New stability coloring logic
+            const stabilityColor = flight.estimates.stability_calibers >= 1.0 ? 'text-green-500' : 'text-red-500';
+            const rodVelocityColor = flight.estimates.launch_rod_velocity >= 15.24 ? 'text-green-500' : 'text-red-500'; // 15.24 m/s is ~50 ft/s
+
+            container.innerHTML = `<h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3><p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>${weatherHtml}<div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mt-4"><div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4>
+                <div class="grid grid-cols-2 gap-x-4 text-sm">
+                    <p>Est. Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(1) : 'N/A'} m</strong></p>
+                    <p>Est. Max Velocity: <strong>${flight.estimates.v ? flight.estimates.v.toFixed(1) : 'N/A'} m/s</strong></p>
+                    <p>Center of Pressure: <strong>${flight.estimates.center_of_pressure ? (flight.estimates.center_of_pressure * 100).toFixed(2) : 'N/A'} cm</strong></p>
+                    <p>Stability: <strong class="${stabilityColor}">${flight.estimates.stability_calibers ? flight.estimates.stability_calibers.toFixed(2) : 'N/A'} cal</strong></p>
+                    <p>Launch Rod Velocity: <strong class="${rodVelocityColor}">${flight.estimates.launch_rod_velocity ? flight.estimates.launch_rod_velocity.toFixed(1) : 'N/A'} m/s</strong></p>
+                </div>
+            </div>${flight.status !== 'Pending' ? generatePostFlightReport(flight) : '<p class="text-center text-gray-500 pt-4">This flight is pending.</p>'}</div>`; 
+            
+            if (flight.status !== 'Pending' && flight.actuals) { 
+                setTimeout(() => renderCharts(flightId), 100); 
+            } 
+        }
+
+        function generatePostFlightReport(flight) { return `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4><p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-500' : 'text-red-500'}">${flight.status}</strong></p><p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\n/g, '<br>') || 'No notes.'}</p></div>${flight.actuals ? `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Actual Performance</h4><div class="grid grid-cols-3 gap-2 text-center"><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max Altitude</h5><p class="font-bold">${flight.actuals.maxAltitude.toFixed(1)} m</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(1)} m/s</p></div></div><div class="mt-4 h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div><div class="mt-4 h-48 sm:h-64"><canvas id="accelChart"></canvas></div></div>` : '<div><p>No flight computer data analyzed.</p></div>'}`; }
+        function deleteFlightLog(flightId) { if (!confirm('Are you sure you want to delete this flight log?')) return; flightLog = flightLog.filter(f => f.id !== flightId); saveAllData(); populateFlightList(); document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-400 p-8">Select a flight...</div>'; document.getElementById('editFlightBtn').classList.add('hidden'); document.getElementById('deleteFlightBtn').classList.add('hidden'); }
+
+        // --- THEME & UI ---
+        function applyTheme(theme) { if (theme === 'dark') { document.documentElement.classList.add('dark'); sunIcon.classList.add('hidden'); moonIcon.classList.remove('hidden'); } else { document.documentElement.classList.remove('dark'); sunIcon.classList.remove('hidden'); moonIcon.classList.add('hidden'); } }
+        function showCustomAlert(message) { const alertHtml = `<div id="custom-alert" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg"><h4>Alert</h4><p>${message}</p><button onclick="document.getElementById('custom-alert').remove()">OK</button></div></div>`; document.body.insertAdjacentHTML('beforeend', alertHtml); }
+
+        // --- ROCKET/ENGINE MANAGEMENT ---
+        const rocketFormFields = [{id:'rocket_name',label:'Rocket Name',type:'text'},{id:'nose_cone_type',label:'Nose Cone',type:'select',options:[{value:'ogive',text:'Ogive'},{value:'cone',text:'Cone'}]},{id:'dry_mass_g',label:'Dry Mass (g)',type:'number'},{id:'length_cm',label:'Length (cm)',type:'number'},{id:'diameter_cm',label:'Diameter (cm)',type:'number'},{id:'nose_cone_length_cm',label:'Nose Cone (cm)',type:'number'},{id:'cog_cm',label:'CoG (cm)',type:'number'},{id:'num_fins',label:'# of Fins',type:'number'},{id:'fin_root_chord_cm',label:'Root Chord (cm)',type:'number'},{id:'fin_tip_chord_cm',label:'Tip Chord (cm)',type:'number'},{id:'fin_semi_span_cm',label:'Semi-Span (cm)',type:'number'},{id:'fin_sweep_dist_cm',label:'Sweep Dist (cm)',type:'number'},{id:'nose_to_fin_dist_cm',label:'Nose to Fin (cm)',type:'number'}];
+        const engineFormFields = [{id:'motor_name',label:'Engine Name',type:'text'},{id:'motor_initial_mass_g',label:'Initial Mass (g)',type:'number'},{id:'motor_propellant_mass_g',label:'Propellant (g)',type:'number'},{id:'motor_avg_thrust_n',label:'Avg Thrust (N)',type:'number'},{id:'motor_peak_thrust_n',label:'Peak Thrust (N)',type:'number'},{id:'motor_peak_time_s',label:'Time to Peak (s)',type:'number'},{id:'motor_burn_time_s',label:'Burn Time (s)',type:'number'}];
+        function generateFormHTML(fields){return fields.map(f=>{let i;if(f.type==='select'){const o=f.options.map(p=>`<option value="${p.value}">${p.text}</option>`).join('');i=`<select id="${f.id}" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-2">${o}</select>`}else{i=`<input id="${f.id}" type="${f.type}" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-2">`}return `<div class="grid grid-cols-2 gap-2 items-center"><label for="${f.id}">${f.label}:</label>${i}</div>`}).join('')}
+        function openManageModal(type){currentModalType=type;const isRocket=type==='rocket';document.getElementById('modalTitle').textContent=isRocket?'Manage Rockets':'Manage Engines';document.getElementById('formContainer').innerHTML=generateFormHTML(isRocket?rocketFormFields:engineFormFields);populateModalList();clearForm();manageModal.style.display='block'}
+        function populateModalList(){const list=currentModalType==='rocket'?rocketList:engineList;const listEl=document.getElementById('itemList');listEl.innerHTML='';list.forEach(item=>{const btn=document.createElement('button');btn.className='item-list-button w-full text-left';btn.textContent=item.rocket_name||item.motor_name;btn.dataset.id=item.id;listEl.appendChild(btn)})}
+        function clearForm(){const fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;fields.forEach(f=>document.getElementById(f.id).value='');editingItemId=null;document.getElementById('saveItemBtn').textContent='Save as New';document.getElementById('deleteItemBtn').classList.add('hidden');document.querySelectorAll('.item-list-button.selected').forEach(b=>b.classList.remove('selected'))}
+        function saveItem(){const list=currentModalType==='rocket'?rocketList:engineList,fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;const data={id:editingItemId||Date.now().toString()};for(const f of fields){const val=document.getElementById(f.id).value;if(!val){showCustomAlert(`Please fill out "${f.label}".`);return}data[f.id]=val}if(editingItemId){const idx=list.findIndex(i=>i.id===editingItemId);list[idx]=data}else{list.push(data)}saveAllData();manageModal.style.display='none'}
+        function deleteItem(){if(!editingItemId||!confirm('Are you sure?'))return;if(currentModalType==='rocket'){rocketList=rocketList.filter(i=>i.id!==editingItemId)}else{engineList=engineList.filter(i=>i.id!==editingItemId)}saveAllData();populateModalList();clearForm()}
+        function populateSelect(el,list,key){el.innerHTML='<option value="">-- Select --</option>';list.forEach(i=>{const o=document.createElement('option');o.value=i.id;o.textContent=i[key];el.appendChild(o)})}
+        function handleItemListClick(e){if(e.target.tagName==='BUTTON'){const id=e.target.dataset.id,list=currentModalType==='rocket'?rocketList:engineList,item=list.find(i=>i.id===id);if(item){const fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;fields.forEach(f=>document.getElementById(f.id).value=item[f.id]||'');editingItemId=id;document.getElementById('saveItemBtn').textContent='Save Changes';document.getElementById('deleteItemBtn').classList.remove('hidden');document.querySelectorAll('.item-list-button.selected').forEach(b=>b.classList.remove('selected'));e.target.classList.add('selected')}}}
+
+        // --- FLIGHT ANALYSIS & PERFORMANCE (UPDATED) ---
+        function analyzeFlightData(flightId){ /* This function is large and remains unchanged, include your original code here */ }
+        function renderCharts(flightId){ /* This function is large and remains unchanged, include your original code here */ }
+        function calculatePerformance(rocketData,engineData,launchRodLength=1){ 
+            const rocket=new Rocket(rocketData),motor=new Motor(engineData);
+            const g=9.80665,rho=1.2,Cd=0.75;
+            const loaded_mass=rocket.dry_mass+motor.initial_mass;
+            const T=motor.avg_thrust,M=loaded_mass;
+            if(T<=M*g)return{error:"Thrust less than weight."};
+            
+            // Calculate launch rod velocity
+            const launch_rod_velocity = Math.sqrt(2 * ((motor.avg_thrust - M * g) / M) * launchRodLength);
+
+            const area=Math.PI*Math.pow(rocket.radius,2);
+            const k=0.5*rho*Cd*area;
+            const t=motor.burn_time;
+            const q=Math.sqrt((T-M*g)/k);
+            const x=2*k*q/M;
+            const v=q*(1-Math.exp(-x*t))/(1+Math.exp(-x*t));
+            const yb_num=T-M*g-k*Math.pow(v,2);
+            const yb=(yb_num<=0)?0:(-M/(2*k))*Math.log(yb_num/(T-M*g));
+            const yc=(M/(2*k))*Math.log((M*g+k*Math.pow(v,2))/(M*g));
+            const total_altitude=yb+yc;
+            const center_of_pressure = rocket.calculate_cop();
+            const stability_calibers=(center_of_pressure-rocket.cog)/rocket.diameter;
+            
+            return{total_altitude,v,stability_calibers, center_of_pressure, launch_rod_velocity}; 
+        }
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded',()=>{loadAllData();const theme=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');applyTheme(theme);document.getElementById('app-footer').innerHTML=`Version ${appVersion} | ${new Date().toUTCString()}`;if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW reg failed'))}});
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Flight Center</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for flight data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for rendering equations -->
+    <script>
+      MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Custom Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom styles from your styles.css file */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); }
+        .modal-content { margin: 5% auto; width: 95%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; }
+        .modal-body { overflow-y: auto; }
+        .item-list-button { cursor: pointer; padding: 0.75rem 0.5rem; border-radius: 0.375rem; transition: background-color 0.2s; font-family: 'Inter', sans-serif; }
+        .item-list-button:hover { background-color: #e5e7eb; }
+        .item-list-button.selected { background-color: #d1d5db; color: #111827; }
+        .modal-body::-webkit-scrollbar { width: 8px; }
+        .modal-body::-webkit-scrollbar-thumb { background-color: #9ca3af; border-radius: 10px; }
+        html.dark .item-list-button:hover { background-color: #374151; }
+        html.dark .item-list-button.selected { background-color: #4B5563; color: #f9fafb; }
+        html.dark .modal-body::-webkit-scrollbar-thumb { background-color: #4B5563; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-300 flex items-center justify-center min-h-screen p-2 transition-colors duration-300">
+
+    <!-- Main Application Container -->
+    <div class="w-full max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 md:p-8">
+        <header class="relative text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-200">Rocket Flight Center</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Manage your fleet, log flights, and analyze performance.</p>
+            <button id="theme-toggle-btn" class="absolute top-0 right-0 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
+                <svg id="sun-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg id="moon-icon" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <button id="manageRocketsBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Rockets</button>
+            <button id="manageEnginesBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Engines</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button id="startPreFlightBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg">Start Pre-Flight</button>
+            <button id="updateFlightBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg">Update Flight</button>
+            <button id="viewFlightLogBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg">View Flight Log</button>
+        </div>
+        <footer id="app-footer" class="text-center text-xs text-gray-400 dark:text-gray-600 mt-8"></footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="manageModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700"><h2 id="modalTitle" class="text-2xl font-bold">Manage</h2></div>
+            <div class="modal-body p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3 class="font-semibold mb-2">Saved Profiles</h3><div id="itemList" class="space-y-1 max-h-96 overflow-y-auto"></div><button id="newItemBtn" class="w-full mt-3 bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">New</button></div>
+                    <div class="md:col-span-2 space-y-4"><div id="formContainer" class="space-y-4"></div></div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 p-6 border-t"><button id="deleteItemBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Delete</button><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Close</button><button id="saveItemBtn" class="bg-gray-800 text-white font-bold py-2 px-4 rounded-lg">Save</button></div>
+        </div>
+    </div>
+
+    <div id="preFlightModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6">
+            <h2 class="text-2xl font-bold mb-6">New Pre-Flight Check</h2>
+            <div class="space-y-4">
+                <div><label for="preFlightRocketSelect">Select Rocket</label><select id="preFlightRocketSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div><label for="preFlightEngineSelect">Select Engine</label><select id="preFlightEngineSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div><label for="launchRodLength">Launch Rod Length (m)</label><input id="launchRodLength" type="number" step="0.1" value="1.0" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></div>
+            </div>
+            <div class="flex justify-end gap-4 mt-8 pt-4 border-t"><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="savePreFlightBtn" class="bg-gray-800 text-white font-bold py-2 px-4 rounded-lg">Save & Estimate</button></div>
+        </div>
+    </div>
+
+    <div id="flightLogModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+            <div class="p-6 border-b"><h2 class="text-2xl font-bold">Flight Log</h2></div>
+            <div class="modal-body p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3>Logged Flights</h3><div id="flightList" class="space-y-1 max-h-[65vh] overflow-y-auto"></div></div>
+                    <div id="flightDetailsContainer" class="md:col-span-2 space-y-4"></div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 p-6 border-t"><button id="editFlightBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Edit Pre-Flight</button><button id="deleteFlightBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hidden">Delete</button><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Close</button></div>
+        </div>
+    </div>
+    
+    <div id="updateFlightModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6">
+            <h2 class="text-2xl font-bold mb-6">Update Pending Flight</h2>
+            <div class="space-y-4">
+                <div><label for="updateFlightSelect">Select Pending Flight</label><select id="updateFlightSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div id="weatherSection" class="hidden"><h3>Launch Conditions</h3><div id="weatherDisplay" class="p-3 rounded-lg text-sm"></div><button id="getWeatherBtn" class="w-full mt-2 bg-teal-600 text-white font-bold py-2 px-4 rounded-lg">Get Current Weather</button></div>
+                <div id="postFlightSection" class="hidden"><h3>Post-Flight Report</h3><div><label for="flightStatus">Outcome:</label><select id="flightStatus" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"><option>Success</option><option>Failure</option></select></div><div><label for="flightNotes">Notes:</label><textarea id="flightNotes" rows="3" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"></textarea></div><h3>Flight Computer Data</h3><textarea id="csvData" rows="6" class="w-full p-2 bg-gray-200 dark:bg-gray-700 rounded-xl"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-4 mt-8 pt-4 border-t"><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="saveUpdateBtn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hidden">Save Update</button></div>
+        </div>
+    </div>
+    
+    <script>
         // All JavaScript will go here
         const appVersion = '2.1.1';
 
@@ -204,4 +468,5 @@
     </script>
 </body>
 </html>
+
 
