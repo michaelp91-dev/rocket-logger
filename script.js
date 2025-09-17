@@ -1,4 +1,4 @@
-const appVersion = '2.0.1';
+const appVersion = '2.0.2';
 
 const openWeatherApiKey = 'API_KEY_PLACEHOLDER';
 const openWeatherApiUrl = 'https://api.openweathermap.org/data/2.5/weather';
@@ -86,3 +86,4 @@ function calculatePerformance(rocketData,engineData,launchRodLength=1.0){/* ... 
 
 // --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded',()=>{loadAllData();const theme=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');applyTheme(theme);document.getElementById('app-footer').innerHTML=`Version ${appVersion} | ${new Date().toUTCString()}`;if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW reg failed'))}});
+
