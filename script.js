@@ -1,7 +1,6 @@
-const appVersion = '2.0.0'; // Updated Version
+const appVersion = '2.0.0';
 
 // --- WEATHER API CONFIGURATION ---
-// ⚠️ PASTE YOUR OPENWEATHER API KEY HERE (or use the placeholder for secure deployment)
 const openWeatherApiKey = 'API_KEY_PLACEHOLDER';
 const openWeatherApiUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
@@ -11,9 +10,9 @@ let engineList = [];
 let flightLog = [];
 let currentModalType = null;
 let editingItemId = null;
-let currentUpdateFlightId = null; // Tracks which flight is being updated
+let currentUpdateFlightId = null;
 
-// --- ROCKET SCIENCE CLASSES (from your original rocket logger) ---
+// --- ROCKET SCIENCE CLASSES ---
 class Rocket {
     constructor(data) {
         this.dry_mass = parseFloat(data.dry_mass_g) / 1000.0;
@@ -119,7 +118,6 @@ function openUpdateFlightModal() {
         option.textContent = `${flight.rocketName} / ${flight.engineName} (${new Date(flight.flightDate).toLocaleDateString()})`;
         updateFlightSelect.appendChild(option);
     });
-
     weatherSection.classList.add('hidden');
     postFlightSection.classList.add('hidden');
     saveUpdateBtn.classList.add('hidden');
@@ -135,16 +133,13 @@ function handleUpdateFlightSelection() {
         saveUpdateBtn.classList.add('hidden');
         return;
     }
-    
     weatherSection.classList.remove('hidden');
     postFlightSection.classList.remove('hidden');
     saveUpdateBtn.classList.remove('hidden');
-
     const flight = flightLog.find(f => f.id === currentUpdateFlightId);
     document.getElementById('flightStatus').value = flight.status === 'Pending' ? 'Success' : flight.status;
     document.getElementById('flightNotes').value = flight.notes || '';
     document.getElementById('csvData').value = flight.rawData || '';
-
     if (flight.weather) {
         displayWeatherInModal(flight.weather);
     } else {
@@ -155,18 +150,15 @@ function handleUpdateFlightSelection() {
 function saveFlightUpdate() {
     if (!currentUpdateFlightId) return;
     const flight = flightLog.find(f => f.id === currentUpdateFlightId);
-    
     flight.status = document.getElementById('flightStatus').value;
     flight.notes = document.getElementById('flightNotes').value;
-    
     const csvText = document.getElementById('csvData').value.trim();
     if (csvText) {
         flight.rawData = csvText;
-        analyzeFlightData(currentUpdateFlightId); // This also calls saveAllData
+        analyzeFlightData(currentUpdateFlightId);
     } else {
         saveAllData();
     }
-    
     updateFlightModal.style.display = 'none';
     openFlightLogModal();
     viewFlightDetails(currentUpdateFlightId);
@@ -195,11 +187,9 @@ function onGeoError(error) {
 
 async function fetchWeatherByCoords(lat, lon) {
     const url = `${openWeatherApiUrl}?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=imperial`;
-    
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error((await response.json()).message || 'Weather data not found.');
-        
         const data = await response.json();
         const flight = flightLog.find(f => f.id === currentUpdateFlightId);
         if (flight) {
@@ -225,8 +215,7 @@ function displayWeatherInModal(data) {
     `;
 }
 
-
-// --- FLIGHT LOG AND PRE-FLIGHT (UNCHANGED and MODIFIED functions from rocket-logger) ---
+// --- FLIGHT LOG AND PRE-FLIGHT ---
 
 function openPreFlightModal() {
     populateSelect(document.getElementById('preFlightRocketSelect'), rocketList, 'rocket_name');
@@ -238,20 +227,18 @@ document.getElementById('savePreFlightBtn').addEventListener('click', () => {
     const rocketId = document.getElementById('preFlightRocketSelect').value;
     const engineId = document.getElementById('preFlightEngineSelect').value;
     const launchRodLength = parseFloat(document.getElementById('launchRodLength').value) || 1.0;
-    
     if (!rocketId || !engineId) {
         showCustomAlert('Please select both a rocket and an engine.');
         return;
     }
-
     const rocketData = rocketList.find(r => r.id === rocketId);
     const engineData = engineList.find(e => e.id === engineId);
     const estimates = calculatePerformance(rocketData, engineData, launchRodLength);
-
     const newFlight = {
         id: Date.now().toString(),
         flightDate: new Date().toISOString(),
-        rocketId, engineId,
+        rocketId,
+        engineId,
         rocketName: rocketData.rocket_name,
         engineName: engineData.motor_name,
         launchRodLength,
@@ -260,7 +247,7 @@ document.getElementById('savePreFlightBtn').addEventListener('click', () => {
         actuals: null,
         notes: '',
         rawData: '',
-        weather: null // Add weather property
+        weather: null
     };
     flightLog.unshift(newFlight);
     saveAllData();
@@ -272,6 +259,8 @@ document.getElementById('savePreFlightBtn').addEventListener('click', () => {
 function openFlightLogModal() {
     populateFlightList();
     document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div>';
+    document.getElementById('editFlightBtn').classList.add('hidden');
+    document.getElementById('deleteFlightBtn').classList.add('hidden');
     flightLogModal.style.display = 'block';
 }
 
@@ -283,11 +272,7 @@ function populateFlightList() {
         const button = document.createElement('button');
         button.className = 'item-list-button w-full text-left';
         button.dataset.id = flight.id;
-        button.innerHTML = `
-            <div class="font-bold">${flight.rocketName} / ${flight.engineName}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div>
-            <div class="text-sm font-semibold ${statusColor}">${flight.status}</div>
-        `;
+        button.innerHTML = `<div class="font-bold">${flight.rocketName} / ${flight.engineName}</div><div class="text-xs text-gray-500 dark:text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div><div class="text-sm font-semibold ${statusColor}">${flight.status}</div>`;
         button.onclick = () => viewFlightDetails(flight.id);
         listEl.appendChild(button);
     });
@@ -297,70 +282,27 @@ function viewFlightDetails(flightId) {
     const flight = flightLog.find(f => f.id === flightId);
     const container = document.getElementById('flightDetailsContainer');
     document.querySelectorAll('#flightList .item-list-button').forEach(btn => btn.classList.toggle('selected', btn.dataset.id === flightId));
-
-    // This is now VIEW-ONLY. Edit button is always hidden.
     document.getElementById('editFlightBtn').classList.add('hidden');
     const deleteBtn = document.getElementById('deleteFlightBtn');
     deleteBtn.classList.remove('hidden');
     deleteBtn.onclick = () => deleteFlightLog(flightId);
-    
     let weatherHtml = '';
     if (flight.weather) {
         const weather = flight.weather;
-        weatherHtml = `
-            <div>
-                <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Launch Conditions</h4>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg">
-                    <span><strong>Temp:</strong> ${Math.round(weather.main.temp)}°F</span>
-                    <span><strong>Feels Like:</strong> ${Math.round(weather.main.feels_like)}°F</span>
-                    <span class="capitalize"><strong>Condition:</strong> ${weather.weather[0].description}</span>
-                    <span><strong>Wind:</strong> ${Math.round(weather.wind.speed)} mph</span>
-                    <span><strong>Humidity:</strong> ${weather.main.humidity}%</span>
-                    <span><strong>Visibility:</strong> ${(weather.visibility / 1609).toFixed(1)} mi</span>
-                </div>
-            </div>
-        `;
+        weatherHtml = `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Launch Conditions</h4><div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg"><span><strong>Temp:</strong> ${Math.round(weather.main.temp)}°F</span><span><strong>Feels Like:</strong> ${Math.round(weather.main.feels_like)}°F</span><span class="capitalize"><strong>Condition:</strong> ${weather.weather[0].description}</span><span><strong>Wind:</strong> ${Math.round(weather.wind.speed)} mph</span><span><strong>Humidity:</strong> ${weather.main.humidity}%</span><span><strong>Visibility:</strong> ${(weather.visibility / 1609).toFixed(1)} mi</span></div></div>`;
     }
-
-    container.innerHTML = `
-        <h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>
-        ${weatherHtml}
-        <div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mt-4">
-            <div>
-                <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4>
-                <p>Est. Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(2) : 'N/A'} m</strong></p>
-                </div>
-            ${flight.status !== 'Pending' ? generatePostFlightReport(flight) : '<p class="text-center text-gray-500">This flight is pending and has not been updated.</p>'}
-        </div>
-    `;
-
-    if(flight.status !== 'Pending' && flight.actuals) {
-         setTimeout(() => renderCharts(flightId), 100);
+    container.innerHTML = `<h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3><p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>${weatherHtml}<div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mt-4"><div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4><p>Est. Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(2) : 'N/A'} m</strong></p></div>${flight.status !== 'Pending' ? generatePostFlightReport(flight) : '<p class="text-center text-gray-500">This flight is pending and has not been updated.</p>'}</div>`;
+    if (flight.status !== 'Pending' && flight.actuals) {
+        setTimeout(() => renderCharts(flightId), 100);
     }
 }
 
 function generatePostFlightReport(flight) {
-    // This function remains largely the same, just used for display
-     return `
-        <div>
-            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4>
-            <p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-500' : 'text-red-500'}">${flight.status}</strong></p>
-            <p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\n/g, '<br>') || 'No notes.'}</p>
-        </div>
-        ${flight.actuals ? `
-        <div>
-            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Actual Performance</h4>
-            <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div>
-            <div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="accelChart"></canvas></div>
-        </div>
-        ` : '<div><p>No flight computer data was analyzed.</p></div>'}
-    `;
+    return `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4><p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-500' : 'text-red-500'}">${flight.status}</strong></p><p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\n/g, '<br>') || 'No notes.'}</p></div>${flight.actuals ? `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Actual Performance</h4><div class="grid grid-cols-3 gap-2 text-center"><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max Altitude</h5><p class="font-bold">${flight.actuals.maxAltitude.toFixed(2)} m</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(2)} m/s</p></div></div><div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="altitudeChart"></canvas></div><div class="mt-4 bg-gray-200 dark:bg-gray-700 p-2 rounded-lg h-48 sm:h-64"><canvas id="accelChart"></canvas></div></div>` : '<div><p>No flight computer data was analyzed.</p></div>'}`;
 }
 
 function deleteFlightLog(flightId) {
     if (!confirm('Are you sure you want to delete this flight log? This action cannot be undone.')) return;
-    
     flightLog = flightLog.filter(f => f.id !== flightId);
     saveAllData();
     populateFlightList();
@@ -370,24 +312,44 @@ function deleteFlightLog(flightId) {
 }
 
 
-// --- ALL OTHER ORIGINAL FUNCTIONS ---
-// (The code for analyzeFlightData, renderCharts, openManageModal, saveItem, deleteItem, etc.
-// remains exactly the same as in your original rocket logger script. Paste them here.)
-// --- For brevity, I am omitting the large blocks of code that do not change ---
-// --- You should copy them from your original "script.js" file and paste them below ---
+// --- THEME MANAGEMENT ---
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+    }
+}
 
-function analyzeFlightData(flightId) { /* ... your original code ... */ }
-function renderCharts(flightId) { /* ... your original code ... */ }
-function showCustomAlert(message) { /* ... your original code ... */ }
-function calculatePerformance(rocketData, engineData, launchRodLength = 1.0) { /* ... your original code ... */ }
-function openManageModal(type) { /* ... your original code ... */ }
-// ... and so on for all your other helper functions.
+// --- ROCKET/ENGINE MANAGEMENT ---
+const rocketFormFields = [{id:'rocket_name',label:'Rocket Name',type:'text'},{id:'nose_cone_type',label:'Nose Cone Type',type:'select',options:[{value:'ogive',text:'Ogive (Curved)'},{value:'cone',text:'Cone (Straight)'}]},{id:'dry_mass_g',label:'Dry Mass (g)',type:'number'},{id:'length_cm',label:'Length (cm)',type:'number'},{id:'diameter_cm',label:'Diameter (cm)',type:'number'},{id:'nose_cone_length_cm',label:'Nose Cone Length (cm)',type:'number'},{id:'cog_cm',label:'Center of Gravity (cm)',type:'number'},{id:'num_fins',label:'Number of Fins',type:'number'},{id:'fin_root_chord_cm',label:'Root Chord (cm)',type:'number'},{id:'fin_tip_chord_cm',label:'Tip Chord (cm)',type:'number'},{id:'fin_semi_span_cm',label:'Semi-Span (cm)',type:'number'},{id:'fin_sweep_dist_cm',label:'Sweep Distance (cm)',type:'number'},{id:'nose_to_fin_dist_cm',label:'Nose Tip to Fin Root (cm)',type:'number'}];
+const engineFormFields = [{id:'motor_name',label:'Engine Name',type:'text'},{id:'motor_initial_mass_g',label:'Initial Mass (g)',type:'number'},{id:'motor_propellant_mass_g',label:'Propellant Mass (g)',type:'number'},{id:'motor_avg_thrust_n',label:'Average Thrust (N)',type:'number'},{id:'motor_peak_thrust_n',label:'Peak Thrust (N)',type:'number'},{id:'motor_peak_time_s',label:'Time to Peak (s)',type:'number'},{id:'motor_burn_time_s',label:'Burn Time (s)',type:'number'}];
 
+function generateFormHTML(fields) {return fields.map(f=>{let inputHtml='';if(f.type==='select'){const optionsHtml=f.options.map(o=>`<option value="${o.value}">${o.text}</option>`).join('');inputHtml=`<select id="${f.id}" class="bg-gray-200 dark:bg-gray-700 rounded p-2 w-full">${optionsHtml}</select>`;}else{inputHtml=`<input id="${f.id}" type="${f.type}" placeholder="${f.placeholder||''}" class="bg-gray-200 dark:bg-gray-700 rounded p-2 w-full">`;} return`<div class="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr] gap-1 sm:gap-2 items-center"><label for="${f.id}" class="text-left sm:text-right">${f.label}:</label>${inputHtml}</div>`;}).join('');}
+function openManageModal(type){currentModalType=type;const isRocket=type==='rocket';document.getElementById('modalTitle').textContent=isRocket?'Manage Rockets':'Manage Engines';document.getElementById('formContainer').innerHTML=generateFormHTML(isRocket?rocketFormFields:engineFormFields);populateModalList();clearForm();manageModal.style.display='block';}
+function populateModalList(){const list=currentModalType==='rocket'?rocketList:engineList;const listEl=document.getElementById('itemList');listEl.innerHTML='';list.forEach(item=>{const button=document.createElement('button');button.className='item-list-button w-full text-left';button.textContent=item.rocket_name||item.motor_name;button.dataset.id=item.id;listEl.appendChild(button);});}
+function clearForm(){const fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;fields.forEach(f=>document.getElementById(f.id).value='');editingItemId=null;document.getElementById('saveItemBtn').textContent='Save as New';document.getElementById('deleteItemBtn').classList.add('hidden');document.querySelectorAll('.item-list-button.selected').forEach(b=>b.classList.remove('selected'));}
+function saveItem(){const list=currentModalType==='rocket'?rocketList:engineList;const fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;const data={id:editingItemId||Date.now().toString()};for(const field of fields){const value=document.getElementById(field.id).value;if(!value){showCustomAlert(`Please fill out the "${field.label}" field.`);return;} data[field.id]=value;} if(editingItemId){const index=list.findIndex(item=>item.id===editingItemId);list[index]=data;}else{list.push(data);} saveAllData();manageModal.style.display='none';}
+function deleteItem(){if(!editingItemId)return;if(!confirm('Are you sure?'))return;if(currentModalType==='rocket'){rocketList=rocketList.filter(item=>item.id!==editingItemId);}else{engineList=engineList.filter(item=>item.id!==editingItemId);} saveAllData();populateModalList();clearForm();}
+function populateSelect(selectEl,list,nameKey){selectEl.innerHTML='<option value="">-- Select --</option>';list.forEach(item=>{const option=document.createElement('option');option.value=item.id;option.textContent=item[nameKey];selectEl.appendChild(option);});}
+document.getElementById('itemList').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){const id=e.target.dataset.id;const list=currentModalType==='rocket'?rocketList:engineList;const itemData=list.find(item=>item.id===id);if(itemData){const fields=currentModalType==='rocket'?rocketFormFields:engineFormFields;fields.forEach(f=>document.getElementById(f.id).value=itemData[f.id]||'');editingItemId=id;document.getElementById('saveItemBtn').textContent='Save Changes';document.getElementById('deleteItemBtn').classList.remove('hidden');document.querySelectorAll('.item-list-button.selected').forEach(b=>b.classList.remove('selected'));e.target.classList.add('selected');}}});
+document.getElementById('newItemBtn').addEventListener('click',clearForm);
+document.getElementById('saveItemBtn').addEventListener('click',saveItem);
+document.getElementById('deleteItemBtn').addEventListener('click',deleteItem);
+
+// --- FLIGHT ANALYSIS & PERFORMANCE ---
+function analyzeFlightData(flightId){/* Your original code here */}
+function renderCharts(flightId){/* Your original code here */}
+function showCustomAlert(message){/* Your original code here */}
+function calculatePerformance(rocketData,engineData,launchRodLength=1.0){/* Your original code here */}
 
 // --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', () => {
     loadAllData();
-    
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (savedTheme) {
@@ -395,16 +357,12 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
         applyTheme(systemPrefersDark ? 'dark' : 'light');
     }
-    
     const updateTime = new Date().toUTCString();
     const footer = document.getElementById('app-footer');
     if (footer) {
         footer.innerHTML = `Version ${appVersion} | ${updateTime}`;
     }
-
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => console.log('SW registered'))
-            .catch(error => console.log('SW registration failed'));
+        navigator.serviceWorker.register('/sw.js').then(()=>console.log('SW registered')).catch(()=>console.log('SW registration failed'));
     }
 });
