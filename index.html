@@ -4,13 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rocket Flight Center</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for flight data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for rendering equations -->
     <script>
-        tailwind.config = { darkMode: 'class' }
+      tailwind.config = { darkMode: 'class' };
+      MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Custom Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    
     <style>
+        /* Custom styles from your styles.css file */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -29,6 +39,7 @@
 </head>
 <body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-300 flex items-center justify-center min-h-screen p-2 transition-colors duration-300">
 
+    <!-- Main Application Container -->
     <div class="w-full max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 md:p-8">
         <header class="relative text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-200">Rocket Flight Center</h1>
@@ -40,8 +51,8 @@
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <button id="manageRocketsBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Rockets</button>
-            <button id="manageEnginesBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg">Manage Engines</button>
+            <button id="manageRocketsBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 font-bold py-3 px-4 rounded-lg">Manage Rockets</button>
+            <button id="manageEnginesBtn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 font-bold py-3 px-4 rounded-lg">Manage Engines</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button id="startPreFlightBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg">Start Pre-Flight</button>
@@ -51,62 +62,59 @@
         <footer id="app-footer" class="text-center text-xs text-gray-400 dark:text-gray-600 mt-8"></footer>
     </div>
 
-    <!-- MANAGE ROCKETS/ENGINES MODAL -->
+    <!-- Modals -->
     <div id="manageModal" class="modal">
         <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
-            <div class="p-6 border-b border-gray-200 dark:border-gray-700"><h2 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-gray-200">Manage</h2></div>
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700"><h2 id="modalTitle" class="text-2xl font-bold">Manage</h2></div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Saved Profiles</h3><div id="itemList" class="space-y-1 max-h-96 overflow-y-auto"></div><button id="newItemBtn" class="w-full mt-3 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">New</button></div>
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3 class="font-semibold mb-2">Saved Profiles</h3><div id="itemList" class="space-y-1 max-h-96 overflow-y-auto"></div><button id="newItemBtn" class="w-full mt-3 bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">New</button></div>
                     <div class="md:col-span-2 space-y-4"><div id="formContainer" class="space-y-4"></div></div>
                 </div>
             </div>
-            <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-200 dark:border-gray-700"><button id="deleteItemBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Delete</button><button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button><button id="saveItemBtn" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black font-bold py-2 px-4 rounded-lg">Save</button></div>
+            <div class="flex justify-end gap-4 p-6 border-t"><button id="deleteItemBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Delete</button><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Close</button><button id="saveItemBtn" class="bg-gray-800 text-white font-bold py-2 px-4 rounded-lg">Save</button></div>
         </div>
     </div>
 
-    <!-- PRE-FLIGHT MODAL -->
     <div id="preFlightModal" class="modal">
         <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-200 mb-6">New Pre-Flight Check</h2>
+            <h2 class="text-2xl font-bold mb-6">New Pre-Flight Check</h2>
             <div class="space-y-4">
-                <div><label for="preFlightRocketSelect" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Select Rocket</label><select id="preFlightRocketSelect" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2"></select></div>
-                <div><label for="preFlightEngineSelect" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Select Engine</label><select id="preFlightEngineSelect" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2"></select></div>
-                <div><label for="launchRodLength" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Launch Rod Length (m)</label><input id="launchRodLength" type="number" step="0.1" value="1.0" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2" placeholder="1.0"></div>
+                <div><label for="preFlightRocketSelect">Select Rocket</label><select id="preFlightRocketSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div><label for="preFlightEngineSelect">Select Engine</label><select id="preFlightEngineSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div><label for="launchRodLength">Launch Rod Length (m)</label><input id="launchRodLength" type="number" step="0.1" value="1.0" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></div>
             </div>
-            <div class="flex justify-end gap-4 mt-8 border-t border-gray-200 dark:border-gray-700 pt-4"><button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="savePreFlightBtn" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black font-bold py-2 px-4 rounded-lg">Save & Estimate</button></div>
+            <div class="flex justify-end gap-4 mt-8 pt-4 border-t"><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="savePreFlightBtn" class="bg-gray-800 text-white font-bold py-2 px-4 rounded-lg">Save & Estimate</button></div>
         </div>
     </div>
 
-    <!-- FLIGHT LOG MODAL -->
     <div id="flightLogModal" class="modal">
         <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl">
-            <div class="p-6 border-b border-gray-200 dark:border-gray-700"><h2 class="text-2xl font-bold text-gray-900 dark:text-gray-200">Flight Log</h2></div>
+            <div class="p-6 border-b"><h2 class="text-2xl font-bold">Flight Log</h2></div>
             <div class="modal-body p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Logged Flights</h3><div id="flightList" class="space-y-1 max-h-[65vh] overflow-y-auto"></div></div>
-                    <div id="flightDetailsContainer" class="md:col-span-2 space-y-4"><div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div></div>
+                    <div class="md:col-span-1 bg-gray-100 dark:bg-black/50 p-3 rounded-lg"><h3>Logged Flights</h3><div id="flightList" class="space-y-1 max-h-[65vh] overflow-y-auto"></div></div>
+                    <div id="flightDetailsContainer" class="md:col-span-2 space-y-4"></div>
                 </div>
             </div>
-            <div class="flex justify-end gap-4 mt-auto p-6 border-t border-gray-200 dark:border-gray-700"><button id="editFlightBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Edit Pre-Flight</button><button id="deleteFlightBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg hidden">Delete Flight</button><button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Close</button></div>
+            <div class="flex justify-end gap-4 p-6 border-t"><button id="editFlightBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hidden mr-auto">Edit Pre-Flight</button><button id="deleteFlightBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hidden">Delete</button><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Close</button></div>
         </div>
     </div>
-
-    <!-- UPDATE FLIGHT MODAL -->
+    
     <div id="updateFlightModal" class="modal">
         <div class="modal-content bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-200 mb-6">Update Pending Flight</h2>
+            <h2 class="text-2xl font-bold mb-6">Update Pending Flight</h2>
             <div class="space-y-4">
-                <div><label for="updateFlightSelect" class="block mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">Select Pending Flight</label><select id="updateFlightSelect" class="w-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2"></select></div>
-                <div id="weatherSection" class="hidden"><h3 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Launch Conditions</h3><div id="weatherDisplay" class="bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg text-sm space-y-2"></div><button id="getWeatherBtn" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Get Current Weather</button></div>
-                <div id="postFlightSection" class="hidden"><h3 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Post-Flight Report</h3><div class="space-y-3"><div><label for="flightStatus" class="text-sm">Flight Outcome:</label><select id="flightStatus" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1 mt-1"><option value="Success">Success</option><option value="Failure">Failure</option></select></div><div><label for="flightNotes" class="text-sm">Notes:</label><textarea id="flightNotes" rows="3" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1 mt-1"></textarea></div></div><h3 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Flight Computer Data</h3><textarea id="csvData" rows="6" class="w-full p-2 bg-gray-200 dark:bg-gray-700 border rounded-xl"></textarea></div>
+                <div><label for="updateFlightSelect">Select Pending Flight</label><select id="updateFlightSelect" class="w-full bg-gray-200 dark:bg-gray-800 rounded p-2"></select></div>
+                <div id="weatherSection" class="hidden"><h3>Launch Conditions</h3><div id="weatherDisplay" class="p-3 rounded-lg text-sm"></div><button id="getWeatherBtn" class="w-full mt-2 bg-teal-600 text-white font-bold py-2 px-4 rounded-lg">Get Current Weather</button></div>
+                <div id="postFlightSection" class="hidden"><h3>Post-Flight Report</h3><div><label for="flightStatus">Outcome:</label><select id="flightStatus" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"><option>Success</option><option>Failure</option></select></div><div><label for="flightNotes">Notes:</label><textarea id="flightNotes" rows="3" class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"></textarea></div><h3>Flight Computer Data</h3><textarea id="csvData" rows="6" class="w-full p-2 bg-gray-200 dark:bg-gray-700 rounded-xl"></textarea></div>
             </div>
-            <div class="flex justify-end gap-4 mt-8 border-t border-gray-200 dark:border-gray-700 pt-4"><button class="close-modal-btn bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="saveUpdateBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg hidden">Save Flight Update</button></div>
+            <div class="flex justify-end gap-4 mt-8 pt-4 border-t"><button class="close-modal-btn bg-gray-300 font-bold py-2 px-4 rounded-lg">Cancel</button><button id="saveUpdateBtn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hidden">Save Update</button></div>
         </div>
     </div>
     
     <script>
-        const appVersion = '2.2.1';
+        const appVersion = '2.3.1';
 
         // --- WEATHER API CONFIGURATION ---
         const openWeatherApiKey = 'API_KEY_PLACEHOLDER';
@@ -164,7 +172,7 @@
         function savePreFlight() { const rocketId = document.getElementById('preFlightRocketSelect').value, engineId = document.getElementById('preFlightEngineSelect').value, launchRodLength = parseFloat(document.getElementById('launchRodLength').value) || 1.0; if (!rocketId || !engineId) { showCustomAlert('Please select both a rocket and an engine.'); return; } const rocketData = rocketList.find(r => r.id === rocketId), engineData = engineList.find(e => e.id === engineId); const estimates = calculatePerformance(rocketData, engineData, launchRodLength); const newFlight = { id: Date.now().toString(), flightDate: new Date().toISOString(), rocketId, engineId, rocketName: rocketData.rocket_name, engineName: engineData.motor_name, launchRodLength, status: 'Pending', estimates, actuals: null, notes: '', rawData: '', weather: null }; flightLog.unshift(newFlight); saveAllData(); preFlightModal.style.display = 'none'; openFlightLogModal(); viewFlightDetails(newFlight.id); }
         function openFlightLogModal() { populateFlightList(); document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 p-8">Select a flight to view details.</div>'; document.getElementById('editFlightBtn').classList.add('hidden'); document.getElementById('deleteFlightBtn').classList.add('hidden'); flightLogModal.style.display = 'block'; }
         function populateFlightList() { const listEl = document.getElementById('flightList'); listEl.innerHTML = ''; flightLog.forEach(flight => { const statusColor = flight.status === 'Success' ? 'text-green-500' : flight.status === 'Failure' ? 'text-red-500' : 'text-yellow-500'; const button = document.createElement('button'); button.className = 'item-list-button w-full text-left'; button.dataset.id = flight.id; button.innerHTML = `<div class="font-bold">${flight.rocketName} / ${flight.engineName}</div><div class="text-xs text-gray-500 dark:text-gray-400">${new Date(flight.flightDate).toLocaleString()}</div><div class="text-sm font-semibold ${statusColor}">${flight.status}</div>`; button.onclick = () => viewFlightDetails(flight.id); listEl.appendChild(button); }); }
-        function viewFlightDetails(flightId) { const flight = flightLog.find(f => f.id === flightId); const container = document.getElementById('flightDetailsContainer'); document.querySelectorAll('#flightList .item-list-button').forEach(btn => btn.classList.toggle('selected', btn.dataset.id === flightId)); document.getElementById('editFlightBtn').classList.add('hidden'); const deleteBtn = document.getElementById('deleteFlightBtn'); deleteBtn.classList.remove('hidden'); deleteBtn.onclick = () => deleteFlightLog(flightId); let weatherHtml = ''; if (flight.weather) { const weather = flight.weather; weatherHtml = `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Launch Conditions</h4><div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg"><span><strong>Temp:</strong> ${Math.round(weather.main.temp)}°F</span><span><strong>Feels Like:</strong> ${Math.round(weather.main.feels_like)}°F</span><span class="capitalize"><strong>Condition:</strong> ${weather.weather[0].description}</span><span><strong>Wind:</strong> ${Math.round(weather.wind.speed)} mph</span><span><strong>Humidity:</strong> ${weather.main.humidity}%</span><span><strong>Visibility:</strong> ${(weather.visibility / 1609).toFixed(1)} mi</span></div></div>`; } const stabilityColor = flight.estimates.stability_calibers >= 1.0 ? 'text-green-500' : 'text-red-500'; const rodVelocityColor = flight.estimates.launch_rod_velocity >= 15.24 ? 'text-green-500' : 'text-red-500'; const thrustRatioColor = flight.estimates.thrust_to_weight_ratio >= 5.0 ? 'text-green-500' : 'text-yellow-500'; container.innerHTML = `<h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3><p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>${weatherHtml}<div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mt-4"><div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4><div class="grid grid-cols-2 gap-x-4 text-sm"><p>Est. Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(1) : 'N/A'} m</strong></p><p>Est. Max Velocity: <strong>${flight.estimates.v ? flight.estimates.v.toFixed(1) : 'N/A'} m/s</strong></p><p>Center of Pressure: <strong>${flight.estimates.center_of_pressure ? (flight.estimates.center_of_pressure * 100).toFixed(2) : 'N/A'} cm</strong></p><p>Stability Margin: <strong class="${stabilityColor}">${flight.estimates.stability_calibers ? flight.estimates.stability_calibers.toFixed(2) : 'N/A'} cal</strong></p><p>Launch Rod Velocity: <strong class="${rodVelocityColor}">${flight.estimates.launch_rod_velocity ? flight.estimates.launch_rod_velocity.toFixed(1) : 'N/A'} m/s</strong></p><p>Thrust/Weight Ratio: <strong class="${thrustRatioColor}">${flight.estimates.thrust_to_weight_ratio ? flight.estimates.thrust_to_weight_ratio.toFixed(1) : 'N/A'} : 1</strong></p><p>Min. Thrust Needed: <strong>${flight.estimates.min_thrust_needed ? flight.estimates.min_thrust_needed.toFixed(1) : 'N/A'} N</strong></p></div></div>${flight.status !== 'Pending' ? generatePostFlightReport(flight) : '<p class="text-center text-gray-500 pt-4">This flight is pending.</p>'}</div>`; if (flight.status !== 'Pending' && flight.actuals) { setTimeout(() => renderCharts(flightId), 100); } }
+        function viewFlightDetails(flightId) { const flight = flightLog.find(f => f.id === flightId); const container = document.getElementById('flightDetailsContainer'); document.querySelectorAll('#flightList .item-list-button').forEach(btn => btn.classList.toggle('selected', btn.dataset.id === flightId)); document.getElementById('editFlightBtn').classList.add('hidden'); const deleteBtn = document.getElementById('deleteFlightBtn'); deleteBtn.classList.remove('hidden'); deleteBtn.onclick = () => deleteFlightLog(flightId); let weatherHtml = ''; if (flight.weather) { const weather = flight.weather; weatherHtml = `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Launch Conditions</h4><div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg"><span><strong>Temp:</strong> ${Math.round(weather.main.temp)}°F</span><span><strong>Feels Like:</strong> ${Math.round(weather.main.feels_like)}°F</span><span class="capitalize"><strong>Condition:</strong> ${weather.weather[0].description}</span><span><strong>Wind:</strong> ${Math.round(weather.wind.speed)} mph</span><span><strong>Humidity:</strong> ${weather.main.humidity}%</span><span><strong>Visibility:</strong> ${(weather.visibility / 1609).toFixed(1)} mi</span></div></div>`; } const stabilityColor = flight.estimates.stability_calibers >= 1.0 ? 'text-green-500' : 'text-red-500'; const rodVelocityColor = flight.estimates.launch_rod_velocity >= 15.24 ? 'text-green-500' : 'text-red-500'; const thrustRatioColor = flight.estimates.thrust_to_weight_ratio >= 5.0 ? 'text-green-500' : 'text-yellow-500'; container.innerHTML = `<h3 class="text-xl font-bold">${flight.rocketName} with ${flight.engineName}</h3><p class="text-sm text-gray-500 dark:text-gray-400">Date: ${new Date(flight.flightDate).toLocaleString()}</p>${weatherHtml}<div class="space-y-4 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mt-4"><div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Pre-Flight Estimates</h4><div class="grid grid-cols-2 gap-x-4 text-sm"><p>Total Altitude: <strong>${flight.estimates.total_altitude ? flight.estimates.total_altitude.toFixed(1) : 'N/A'} m</strong></p><p>Max Velocity: <strong>${flight.estimates.max_velocity ? flight.estimates.max_velocity.toFixed(1) : 'N/A'} m/s</strong></p><p>Boost Altitude: <strong>${flight.estimates.boost_altitude ? flight.estimates.boost_altitude.toFixed(1) : 'N/A'} m</strong></p><p>Coast Altitude: <strong>${flight.estimates.coast_altitude ? flight.estimates.coast_altitude.toFixed(1) : 'N/A'} m</strong></p><p>Center of Pressure: <strong>${flight.estimates.center_of_pressure ? (flight.estimates.center_of_pressure * 100).toFixed(2) : 'N/A'} cm</strong></p><p>Stability Margin: <strong class="${stabilityColor}">${flight.estimates.stability_calibers ? flight.estimates.stability_calibers.toFixed(2) : 'N/A'} cal</strong></p><p>Launch Rod Velocity: <strong class="${rodVelocityColor}">${flight.estimates.launch_rod_velocity ? flight.estimates.launch_rod_velocity.toFixed(1) : 'N/A'} m/s</strong></p><p>Thrust/Weight Ratio: <strong class="${thrustRatioColor}">${flight.estimates.thrust_to_weight_ratio ? flight.estimates.thrust_to_weight_ratio.toFixed(1) : 'N/A'} : 1</strong></p><p>Min. Thrust Needed: <strong>${flight.estimates.min_thrust_needed ? flight.estimates.min_thrust_needed.toFixed(1) : 'N/A'} N</strong></p></div></div>${flight.status !== 'Pending' ? generatePostFlightReport(flight) : '<p class="text-center text-gray-500 pt-4">This flight is pending.</p>'}</div>`; if (flight.status !== 'Pending' && flight.actuals) { setTimeout(() => renderCharts(flightId), 100); } }
         function generatePostFlightReport(flight) { return `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Post-Flight Report</h4><p>Outcome: <strong class="${flight.status === 'Success' ? 'text-green-500' : 'text-red-500'}">${flight.status}</strong></p><p class="text-sm mt-2"><strong>Notes:</strong><br>${flight.notes.replace(/\n/g, '<br>') || 'No notes.'}</p></div>${flight.actuals ? `<div><h4 class="font-semibold text-cyan-600 dark:text-cyan-400 my-2">Actual Performance</h4><div class="grid grid-cols-3 gap-2 text-center"><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max Altitude</h5><p class="font-bold">${flight.actuals.maxAltitude.toFixed(2)} m</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Max G-Force</h5><p class="font-bold">${flight.actuals.maxGForce.toFixed(2)} G</p></div><div class="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg"><h5 class="text-xs">Top Speed</h5><p class="font-bold">${flight.actuals.maxVelocity.toFixed(2)} m/s</p></div></div><div class="mt-4"><canvas id="altitudeChart"></canvas></div><div class="mt-4"><canvas id="accelChart"></canvas></div></div>` : '<div><p>No flight computer data analyzed.</p></div>'}`; }
         function deleteFlightLog(flightId) { if (!confirm('Are you sure you want to delete this flight log?')) return; flightLog = flightLog.filter(f => f.id !== flightId); saveAllData(); populateFlightList(); document.getElementById('flightDetailsContainer').innerHTML = '<div class="text-center text-gray-400 p-8">Select a flight...</div>'; document.getElementById('editFlightBtn').classList.add('hidden'); document.getElementById('deleteFlightBtn').classList.add('hidden'); }
         function applyTheme(theme) { if (theme === 'dark') { document.documentElement.classList.add('dark'); sunIcon.classList.add('hidden'); moonIcon.classList.remove('hidden'); } else { document.documentElement.classList.remove('dark'); sunIcon.classList.remove('hidden'); moonIcon.classList.add('hidden'); } }
@@ -185,7 +193,7 @@
         // --- FLIGHT ANALYSIS & PERFORMANCE ---
         function analyzeFlightData(flightId) { /* Your original, complete function from rocket-logger */ }
         function renderCharts(flightId) { /* Your original, complete function from rocket-logger */ }
-        function calculatePerformance(rocketData,engineData,launchRodLength=1){ const rocket=new Rocket(rocketData),motor=new Motor(engineData);const g=9.80665,rho=1.2,Cd=0.75;const loaded_mass=rocket.dry_mass+motor.initial_mass;const T_avg=motor.avg_thrust, M=loaded_mass;if(T_avg<=M*g)return{error:"Thrust less than weight."};const thrust_to_weight_ratio = T_avg / (M * g); const launch_rod_velocity = Math.sqrt(2 * ((T_avg - M * g) / M) * launchRodLength); const min_thrust_needed = M * ((Math.pow(10, 2) / (2 * launchRodLength)) + g); const area=Math.PI*Math.pow(rocket.radius,2);const k=0.5*rho*Cd*area;const t=motor.burn_time;const q=Math.sqrt((T_avg-M*g)/k);const x=2*k*q/M;const v=q*(1-Math.exp(-x*t))/(1+Math.exp(-x*t));const yb_num=T_avg-M*g-k*Math.pow(v,2);const yb=(yb_num<=0)?0:(-M/(2*k))*Math.log(yb_num/(T_avg-M*g));const yc=(M/(2*k))*Math.log((M*g+k*Math.pow(v,2))/(M*g));const total_altitude=yb+yc;const center_of_pressure = rocket.calculate_cop();const stability_calibers=(center_of_pressure-rocket.cog)/rocket.diameter;return{total_altitude,v,stability_calibers, center_of_pressure, launch_rod_velocity, thrust_to_weight_ratio, min_thrust_needed}; }
+        function calculatePerformance(rocketData,engineData,launchRodLength=1){ const rocket=new Rocket(rocketData),motor=new Motor(engineData);const g=9.80665,rho=1.2,Cd=0.75;const M=rocket.dry_mass+motor.initial_mass-(motor.propellant_mass/2);const T=motor.avg_thrust;if(T<=M*g)return{error:"Thrust less than weight."};const area=Math.PI*Math.pow(rocket.radius,2);const k=0.5*rho*Cd*area;const t=motor.burn_time;const q=Math.sqrt((T-M*g)/k);const x=(2*k*q)/M;const max_velocity=q*(1-Math.exp(-x*t))/(1+Math.exp(-x*t));const boost_altitude_numerator=T-M*g-k*Math.pow(max_velocity,2);const boost_altitude=(boost_altitude_numerator<=0)?0:(-M/(2*k))*Math.log(boost_altitude_numerator/(T-M*g));const coast_altitude_numerator=M*g+k*Math.pow(max_velocity,2);const coast_altitude=(M/(2*k))*Math.log(coast_altitude_numerator/(M*g));const total_altitude=boost_altitude+coast_altitude;const thrust_to_weight_ratio=T/(M*g);const launch_rod_velocity=Math.sqrt(2*((T-M*g)/M)*launchRodLength);const min_thrust_needed=M*((Math.pow(10,2)/(2*launchRodLength))+g);const center_of_pressure=rocket.calculate_cop();const stability_calibers=(center_of_pressure-rocket.cog)/rocket.diameter;return{total_altitude,max_velocity,boost_altitude,coast_altitude,stability_calibers,center_of_pressure,launch_rod_velocity,thrust_to_weight_ratio,min_thrust_needed}; }
 
         // --- INITIALIZATION ---
         window.addEventListener('DOMContentLoaded',()=>{loadAllData();const theme=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');applyTheme(theme);document.getElementById('app-footer').innerHTML=`Version ${appVersion} | ${new Date().toUTCString()}`;if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW reg failed'))}});
